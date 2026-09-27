@@ -394,8 +394,8 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
         </div>
       )}
 
-      {/* Check-in Form */}
-      {(!checkInResult || !checkInResult.success) && (
+      {/* Check-in Form (ONLY for NEW FIRST-TIME CUSTOMERS) */}
+      {(!checkInResult || !checkInResult.success) && !localStorage.getItem('localpass_customer_phone') && (
         <form onSubmit={handleCheckInSubmit} className="glass-card" style={{ padding: '1.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
             <h2 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
