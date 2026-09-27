@@ -17,7 +17,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
   const [userLocation, setUserLocation] = useState(null);
   const [gpsError, setGpsError] = useState(null);
   const [isGettingGps, setIsGettingGps] = useState(false);
-  const [simulatedDistance, setSimulatedDistance] = useState(null);
+  const [userDistance, setUserDistance] = useState(null);
 
   // Result state
   const [checkInResult, setCheckInResult] = useState(null);
@@ -63,12 +63,12 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
 
         if (venueObj) {
           const dist = calculateHaversine(coords.lat, coords.lng, venueObj.latitude, venueObj.longitude);
-          setSimulatedDistance(dist);
+          setUserDistance(dist);
         }
       },
       (err) => {
         console.warn('GPS Error:', err.message);
-        setGpsError('Por favor permite la ubicación GPS en tu navegador para verificar que estás en el local.');
+        setGpsError('Por favor permite el acceso a la ubicación GPS de tu celular para validar que estás en el local.');
         setIsGettingGps(false);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -182,7 +182,8 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
     );
   }
 
-  const isWithinRadius = simulatedDistance !== null && simulatedDistance <= venue.geofence_radius;
+  const distanceMeters = userLocation && venue ? calculateHaversine(userLocation.lat, userLocation.lng, venue.latitude, venue.longitude) : null;
+  const isWithinRadius = distanceMeters !== null && distanceMeters <= venue.geofence_radius;
 
   return (
     <div style={{ maxWidth: '480px', margin: '0 auto', padding: '1rem' }}>
@@ -203,8 +204,6 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
         </p>
       </div>
 
-
-
       {/* GPS Location Status Indicator */}
       <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem', textAlign: 'center' }}>
         {isGettingGps ? (
@@ -212,14 +211,14 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
             <div className="radar-circle scanning" style={{ width: 64, height: 64 }}>
               <Navigation size={24} color="#6366f1" />
             </div>
-            <p style={{ fontSize: '0.9rem', color: '#a5b4fc' }}>Verificando tu señal GPS...</p>
+            <p style={{ fontSize: '0.9rem', color: '#a5b4fc' }}>Obteniendo ubicación GPS de tu celular...</p>
           </div>
         ) : gpsError ? (
           <div>
             <AlertTriangle size={32} color="#f59e0b" style={{ margin: '0 auto 0.5rem' }} />
             <p style={{ fontSize: '0.85rem', color: '#fbbf24', marginBottom: '0.75rem' }}>{gpsError}</p>
             <button onClick={() => requestGpsLocation()} className="btn-secondary" style={{ fontSize: '0.8rem' }}>
-              <RefreshCw size={14} /> Reintentar Permiso GPS
+              <RefreshCw size={14} /> Permitir Ubicación GPS
             </button>
           </div>
         ) : (
@@ -236,7 +235,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
               {isWithinRadius ? (
                 <div>
                   <span className="badge badge-green" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-                    <CheckCircle size={14} /> Ubicación Validada ({simulatedDistance}m del local)
+                    <CheckCircle size={14} /> Ubicación Validada ({distanceMeters}m del local)
                   </span>
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
                     Estás dentro del radio seguro permitido de {venue.geofence_radius}m.
@@ -245,10 +244,10 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
               ) : (
                 <div>
                   <span className="badge badge-red" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
-                    ⛔ Fuera de Rango ({simulatedDistance}m del local)
+                    ⛔ Fuera de Rango ({distanceMeters}m del local)
                   </span>
                   <p style={{ fontSize: '0.8rem', color: '#f87171', marginTop: '0.5rem' }}>
-                    El límite máximo es {venue.geofence_radius}m. Por seguridad debes estar físicamente en el local.
+                    El límite máximo es {venue.geofence_radius}m. Debes estar físicamente en el establecimiento.
                   </p>
                 </div>
               )}
