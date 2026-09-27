@@ -383,27 +383,26 @@ export function Dashboard({ token, venueId, onNavigateToNfc, onOpenAuth }) {
                     </span>
                   </div>
 
-                  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '5px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
-                        Visita #{v.visits_count}
-                      </span>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        {new Date(v.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
-                    </div>
+                  <div style={{ textAlign: 'right', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="badge badge-green" style={{ fontSize: '0.72rem', padding: '4px 8px' }}>
+                      Visita #{v.visits_count}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', minWidth: '65px', textAlign: 'right' }}>
+                      {new Date(v.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
                     {v.customer_phone && (
                       <button
                         type="button"
                         onClick={() => setWhatsappTarget({ name: v.customer_name, phone: v.customer_phone })}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: '5px',
-                          padding: '4px 10px', fontSize: '0.7rem', borderRadius: '7px', border: 'none',
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          padding: '5px 10px', fontSize: '0.72rem', borderRadius: '8px', border: 'none',
                           cursor: 'pointer', fontWeight: 600,
                           background: 'linear-gradient(135deg, #25d366, #128c7e)',
                           color: '#fff',
                           boxShadow: '0 2px 6px rgba(37,211,102,0.3)',
-                          transition: 'transform 0.15s'
+                          transition: 'transform 0.15s',
+                          whiteSpace: 'nowrap'
                         }}
                         onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; }}
                         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; }}
