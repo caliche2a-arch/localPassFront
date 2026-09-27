@@ -1,0 +1,435 @@
+import React, { useState, useEffect } from 'react';
+import { MapPin, CheckCircle, AlertTriangle, Smartphone, ShieldCheck, User, Phone, Mail, Navigation, RefreshCw, Sparkles, Send } from 'lucide-react';
+import confetti from 'canvas-confetti';
+import { API_BASE_URL } from '../config';
+
+export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
+  const [venue, setVenue] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Form State
+  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+
+  // GPS State
+  const [userLocation, setUserLocation] = useState(null);
+  const [gpsError, setGpsError] = useState(null);
+  const [isGettingGps, setIsGettingGps] = useState(false);
+  const [simulatedDistance, setSimulatedDistance] = useState(null);
+
+  // Result state
+  const [checkInResult, setCheckInResult] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchVenueInfo();
+  }, [venueSlug]);
+
+  const fetchVenueInfo = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`${API_BASE_URL}/api/public/venue/${venueSlug}`);
+      if (!res.ok) throw new Error('No se pudo encontrar la información del local');
+      const data = await res.json();
+      setVenue(data);
+      requestGpsLocation(data);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const requestGpsLocation = (venueObj = venue) => {
+    setIsGettingGps(true);
+    setGpsError(null);
+
+    if (!navigator.geolocation) {
+      setGpsError('Tu navegador no soporta geolocalización GPS');
+      setIsGettingGps(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const coords = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude
+        };
+        setUserLocation(coords);
+        setIsGettingGps(false);
+
+        if (venueObj) {
+          const dist = calculateHaversine(coords.lat, coords.lng, venueObj.latitude, venueObj.longitude);
+          setSimulatedDistance(dist);
+        }
+      },
+      (err) => {
+        console.warn('GPS Error:', err.message);
+        setGpsError('Por favor permite la ubicación GPS en tu navegador para verificar que estás en el local.');
+        setIsGettingGps(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
+  const calculateHaversine = (lat1, lon1, lat2, lon2) => {
+    const R = 6371000;
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return Math.round(R * c * 10) / 10;
+  };
+
+  const setSimulatorPreset = (preset) => {
+    if (!venue) return;
+    if (preset === 'inside') {
+      const simLat = venue.latitude + 0.00008;
+      const simLng = venue.longitude + 0.00008;
+      setUserLocation({ lat: simLat, lng: simLng });
+      setSimulatedDistance(calculateHaversine(simLat, simLng, venue.latitude, venue.longitude));
+      setGpsError(null);
+    } else if (preset === 'far') {
+      const simLat = venue.latitude + 0.0045;
+      const simLng = venue.longitude + 0.0045;
+      setUserLocation({ lat: simLat, lng: simLng });
+      setSimulatedDistance(calculateHaversine(simLat, simLng, venue.latitude, venue.longitude));
+      setGpsError(null);
+    }
+  };
+
+  const handleCheckInSubmit = async (e) => {
+    e.preventDefault();
+    if (!userLocation) {
+      alert('Debes permitir el acceso a la ubicación GPS para registrar tu visita.');
+      return;
+    }
+
+    setSubmitting(true);
+    setCheckInResult(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/public/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: venueSlug,
+          phone,
+          name,
+          email,
+          user_lat: userLocation.lat,
+          user_lng: userLocation.lng
+        })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setCheckInResult({
+          success: false,
+          error: data.error || 'Error al validar la visita',
+          message: data.message || 'Ocurrió un error inesperado.',
+          distance: data.distance_meters,
+          maxRadius: data.max_allowed_radius
+        });
+      } else {
+        setCheckInResult({
+          success: true,
+          message: data.message,
+          visits_count: data.visits_count,
+          is_first_visit: data.is_first_visit,
+          venue_name: data.venue_name,
+          customer_name: data.customer_name
+        });
+
+        try {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        } catch (e) {}
+      }
+    } catch (err) {
+      setCheckInResult({
+        success: false,
+        error: 'Error de conexión',
+        message: 'No se pudo contactar al servidor. Verifica tu conexión a internet.'
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div style={{ padding: '3rem', textAlign: 'center' }}>
+        <div className="radar-circle scanning">
+          <Smartphone size={32} color="#6366f1" />
+        </div>
+        <h3 className="gradient-text" style={{ fontSize: '1.2rem', marginTop: '1rem' }}>
+          Conectando con la etiqueta NFC del local...
+        </h3>
+      </div>
+    );
+  }
+
+  if (error || !venue) {
+    return (
+      <div className="glass-card" style={{ padding: '2rem', maxWidth: '500px', margin: '2rem auto', textAlign: 'center' }}>
+        <AlertTriangle size={48} color="#ef4444" style={{ margin: '0 auto 1rem' }} />
+        <h2 style={{ color: '#ef4444', marginBottom: '0.5rem' }}>Local No Encontrado</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+          La URL o código NFC escaneado no coincide con ningún local activo.
+        </p>
+        <a href="tel:3183763021" className="btn-secondary" style={{ textDecoration: 'none' }}>
+          <Phone size={16} /> Contactar Soporte (3183763021)
+        </a>
+      </div>
+    );
+  }
+
+  const isWithinRadius = simulatedDistance !== null && simulatedDistance <= venue.geofence_radius;
+
+  return (
+    <div style={{ maxWidth: '480px', margin: '0 auto', padding: '1rem' }}>
+      
+      {/* Header Banner */}
+      <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center', marginBottom: '1.5rem', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 10, right: 10 }}>
+          <span className="badge badge-purple">
+            <Smartphone size={12} /> NFC Activo
+          </span>
+        </div>
+        <div style={{ width: 60, height: 60, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem auto', boxShadow: '0 4px 15px rgba(99, 102, 241, 0.4)' }}>
+          <MapPin size={28} color="#ffffff" />
+        </div>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 800 }} className="gradient-text">{venue.name}</h1>
+        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+          {venue.address}
+        </p>
+      </div>
+
+      {/* Simulator Banner for testing NFC without physical tag */}
+      <div className="glass-card" style={{ padding: '1rem', marginBottom: '1.25rem', border: '1px dashed rgba(99, 102, 241, 0.4)', background: 'rgba(99, 102, 241, 0.05)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
+          <Sparkles size={16} color="#a5b4fc" />
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#a5b4fc' }}>
+            Verificador y Test de Geolocalización GPS
+          </span>
+        </div>
+        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+          Valida la respuesta del rango de geofencia del establecimiento:
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+          <button
+            type="button"
+            onClick={() => setSimulatorPreset('inside')}
+            className="btn-secondary"
+            style={{ fontSize: '0.78rem', padding: '8px 10px', borderColor: 'rgba(16, 185, 129, 0.4)' }}
+          >
+            🎯 Simular DENTRO (~10m)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSimulatorPreset('far')}
+            className="btn-secondary"
+            style={{ fontSize: '0.78rem', padding: '8px 10px', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+          >
+            ⛔ Simular FUERA (~500m)
+          </button>
+        </div>
+      </div>
+
+      {/* GPS Location Status Indicator */}
+      <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+        {isGettingGps ? (
+          <div>
+            <div className="radar-circle scanning" style={{ width: 64, height: 64 }}>
+              <Navigation size={24} color="#6366f1" />
+            </div>
+            <p style={{ fontSize: '0.9rem', color: '#a5b4fc' }}>Verificando tu señal GPS...</p>
+          </div>
+        ) : gpsError ? (
+          <div>
+            <AlertTriangle size={32} color="#f59e0b" style={{ margin: '0 auto 0.5rem' }} />
+            <p style={{ fontSize: '0.85rem', color: '#fbbf24', marginBottom: '0.75rem' }}>{gpsError}</p>
+            <button onClick={() => requestGpsLocation()} className="btn-secondary" style={{ fontSize: '0.8rem' }}>
+              <RefreshCw size={14} /> Reintentar Permiso GPS
+            </button>
+          </div>
+        ) : (
+          <div>
+            <div className={`radar-circle ${isWithinRadius ? 'valid' : 'invalid'}`} style={{ width: 70, height: 70 }}>
+              {isWithinRadius ? (
+                <ShieldCheck size={36} color="#10b981" />
+              ) : (
+                <AlertTriangle size={36} color="#ef4444" />
+              )}
+            </div>
+
+            <div style={{ marginTop: '0.5rem' }}>
+              {isWithinRadius ? (
+                <div>
+                  <span className="badge badge-green" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+                    <CheckCircle size={14} /> Ubicación Validada ({simulatedDistance}m del local)
+                  </span>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
+                    Estás dentro del radio seguro permitido de {venue.geofence_radius}m.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <span className="badge badge-red" style={{ fontSize: '0.8rem', padding: '6px 12px' }}>
+                    ⛔ Fuera de Rango ({simulatedDistance}m del local)
+                  </span>
+                  <p style={{ fontSize: '0.8rem', color: '#f87171', marginTop: '0.5rem' }}>
+                    El límite máximo es {venue.geofence_radius}m. Por seguridad debes estar físicamente en el local.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Success Result View */}
+      {checkInResult && checkInResult.success && (
+        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', marginBottom: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.08)' }}>
+          <div style={{ width: 70, height: 70, borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto', boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)' }}>
+            <CheckCircle size={40} color="#ffffff" />
+          </div>
+          <h2 style={{ fontSize: '1.4rem', color: '#ffffff', marginBottom: '0.5rem' }}>
+            ¡Visita Registrada!
+          </h2>
+          <p style={{ fontSize: '0.95rem', color: '#d1fae5', marginBottom: '1rem', lineHeight: '1.5' }}>
+            {checkInResult.message}
+          </p>
+
+          <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: 12, padding: '1rem', marginBottom: '1.5rem' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
+              NIVEL DE FIDELIDAD
+            </span>
+            <span className="gradient-text-green" style={{ fontSize: '1.5rem', fontWeight: 800 }}>
+              Visita #{checkInResult.visits_count}
+            </span>
+          </div>
+
+          <button onClick={() => setCheckInResult(null)} className="btn-secondary" style={{ width: '100%' }}>
+            Registrar otra visita
+          </button>
+        </div>
+      )}
+
+      {/* Security Violation Error View */}
+      {checkInResult && !checkInResult.success && (
+        <div className="glass-card" style={{ padding: '1.5rem', textAlign: 'center', marginBottom: '1.5rem', border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.08)' }}>
+          <AlertTriangle size={40} color="#ef4444" style={{ margin: '0 auto 0.75rem' }} />
+          <h3 style={{ color: '#ef4444', marginBottom: '0.5rem', fontSize: '1.1rem' }}>
+            {checkInResult.error}
+          </h3>
+          <p style={{ fontSize: '0.85rem', color: '#fca5a5', lineHeight: '1.4', marginBottom: '1rem' }}>
+            {checkInResult.message}
+          </p>
+          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            Si la señal GPS no es precisa en tu celular, intenta acercarte a las mesas o comunicarte con el soporte.
+          </p>
+        </div>
+      )}
+
+      {/* Check-in Form */}
+      {(!checkInResult || !checkInResult.success) && (
+        <form onSubmit={handleCheckInSubmit} className="glass-card" style={{ padding: '1.5rem' }}>
+          <h2 style={{ fontSize: '1.1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <User size={18} color="#6366f1" /> Registrar Entrada
+          </h2>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label className="input-label">Número de Celular *</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="tel"
+                required
+                placeholder="Ej: 3001234567"
+                className="input-field"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+              <Phone size={16} color="#9ca3af" style={{ position: 'absolute', right: 14, top: 14 }} />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '1rem' }}>
+            <label className="input-label">Nombre Completo *</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="text"
+                required
+                placeholder="Ej: María Gómez"
+                className="input-field"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+              <User size={16} color="#9ca3af" style={{ position: 'absolute', right: 14, top: 14 }} />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label className="input-label">Correo Electrónico (Opcional)</label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="email"
+                placeholder="Ej: maria@ejemplo.com"
+                className="input-field"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <Mail size={16} color="#9ca3af" style={{ position: 'absolute', right: 14, top: 14 }} />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={submitting || !isWithinRadius}
+            className="btn-primary"
+          >
+            {submitting ? (
+              'Registrando visita...'
+            ) : !isWithinRadius ? (
+              '⛔ GPS Fuera de Rango'
+            ) : (
+              <>
+                <Send size={18} /> Confirmar Visita
+              </>
+            )}
+          </button>
+        </form>
+      )}
+
+      {/* Support direct footer */}
+      <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+          ¿Problemas con el registro o necesitas soporte?
+        </p>
+        <a
+          href="https://wa.me/573183763021?text=Hola,%20tengo%20un%20inconveniente%20registrando%20mi%20visita"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn-secondary btn-whatsapp"
+          style={{ textDecoration: 'none', display: 'inline-flex', padding: '8px 16px', fontSize: '0.85rem' }}
+        >
+          <Phone size={14} /> Soporte WhatsApp: 3183763021
+        </a>
+      </div>
+
+    </div>
+  );
+}
