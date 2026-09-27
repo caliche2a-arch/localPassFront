@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Crown, DollarSign, Users, Building, ShieldCheck, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Smartphone, Search, Save } from 'lucide-react';
+import { Crown, DollarSign, Users, Building, ShieldCheck, AlertTriangle, CheckCircle2, XCircle, RefreshCw, Smartphone, Search, Save, Calendar, Radio } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
@@ -10,6 +10,8 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingId, setUpdatingId] = useState(null);
   const [editingAmount, setEditingAmount] = useState({});
+  const [editingMonths, setEditingMonths] = useState({});
+  const [editingNfcs, setEditingNfcs] = useState({});
 
   useEffect(() => {
     fetchAdminData();
@@ -34,10 +36,16 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
       setUsers(usersData);
 
       const initialAmounts = {};
+      const initialMonths = {};
+      const initialNfcs = {};
       usersData.forEach(u => {
         initialAmounts[u.id] = u.amount_paid || 0;
+        initialMonths[u.id] = u.months_paid || 1;
+        initialNfcs[u.id] = u.nfc_count || 1;
       });
       setEditingAmount(initialAmounts);
+      setEditingMonths(initialMonths);
+      setEditingNfcs(initialNfcs);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -70,9 +78,11 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
     }
   };
 
-  const saveUserPlanAndAmount = async (user) => {
+  const saveUserData = async (user) => {
     setUpdatingId(user.id);
     const amount = Number(editingAmount[user.id]) || 0;
+    const months = Number(editingMonths[user.id]) || 1;
+    const nfcs = Number(editingNfcs[user.id]) || 1;
 
     try {
       const res = await fetch(`${API_BASE_URL}/api/admin/users/${user.id}/status`, {
@@ -83,13 +93,15 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
         },
         body: JSON.stringify({
           plan_type: user.plan_type,
-          amount_paid: amount
+          amount_paid: amount,
+          months_paid: months,
+          nfc_count: nfcs
         })
       });
 
       if (!res.ok) throw new Error('Error actualizando usuario');
       
-      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, amount_paid: amount } : u));
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, amount_paid: amount, months_paid: months, nfc_count: nfcs } : u));
       fetchAdminData();
     } catch (err) {
       alert('Error: ' + err.message);
@@ -113,7 +125,7 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
   }
 
   return (
-    <div style={{ maxWidth: '1150px', margin: '0 auto', padding: '1rem' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '1rem' }}>
       
       {/* Top Banner */}
       <div className="glass-card" style={{ padding: '1.75rem', marginBottom: '1.5rem' }}>
@@ -125,14 +137,14 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
             Directorio de Negocios & Control de Licencias
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: '4px' }}>
-            Administra las suscripciones de los dueños de locales, registra los valores de planes y gestiona los accesos a la plataforma.
+            Administra las suscripciones, registra los meses contratados, tarjetas NFC asignadas y el estado de acceso de cada negocio.
           </p>
         </div>
       </div>
 
       {/* Admin Financial Stats Grid */}
       {stats && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
           
           <div className="glass-card glass-card-interactive" style={{ padding: '1.25rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Recaudado ($)</span>
@@ -143,27 +155,31 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
           </div>
 
           <div className="glass-card glass-card-interactive" style={{ padding: '1.25rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Clientes / Negocios</span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Prom. Meses Pagados</span>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#a855f7', margin: '4px 0' }}>
+              {stats.avg_months_paid || 0} meses
+            </h2>
+            <span style={{ fontSize: '0.72rem', color: '#c084fc' }}>Permanencia promedio</span>
+          </div>
+
+          <div className="glass-card glass-card-interactive" style={{ padding: '1.25rem' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Tarjetas NFC Totales</span>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#38bdf8', margin: '4px 0' }}>
+              {stats.total_nfcs || 0} NFCs
+            </h2>
+            <span style={{ fontSize: '0.72rem', color: '#38bdf8' }}>Desplegadas en mesas</span>
+          </div>
+
+          <div className="glass-card glass-card-interactive" style={{ padding: '1.25rem' }}>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Clientes</span>
             <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: '4px 0' }}>{stats.total_clients}</h2>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Dueños de locales activos</span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Locales registrados</span>
           </div>
 
           <div className="glass-card glass-card-interactive" style={{ padding: '1.25rem' }}>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Clientes Habilitados</span>
             <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#34d399', margin: '4px 0' }}>{stats.paid_clients}</h2>
             <span style={{ fontSize: '0.72rem', color: '#34d399' }}>Acceso activo</span>
-          </div>
-
-          <div className="glass-card glass-card-interactive" style={{ padding: '1.25rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Clientes Suspendidos</span>
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f87171', margin: '4px 0' }}>{stats.unpaid_clients}</h2>
-            <span style={{ fontSize: '0.72rem', color: '#f87171' }}>Bloqueados por pago</span>
-          </div>
-
-          <div className="glass-card glass-card-interactive" style={{ padding: '1.25rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Visitas Totales Plataforma</span>
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#a5b4fc', margin: '4px 0' }}>{stats.total_visits}</h2>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Idas registradas</span>
           </div>
 
         </div>
@@ -173,9 +189,9 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
       <div className="glass-card" style={{ padding: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Directorio de Usuarios y Registro de Cobros</h2>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800 }}>Gestión de Licencias, Meses y Equipamiento NFC</h2>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              Habilita o suspende el acceso a la plataforma y registra los montos cobrados.
+              Actualiza los meses contratados, inventario de NFCs y montos pagados de cada cliente.
             </p>
           </div>
 
@@ -197,11 +213,12 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
             <thead>
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '10px' }}>Cliente / Negocio</th>
-                <th style={{ padding: '10px' }}>Correo de Login</th>
-                <th style={{ padding: '10px' }}>Sedes</th>
-                <th style={{ padding: '10px' }}>Tipo de Plan</th>
-                <th style={{ padding: '10px' }}>Monto Pagado ($)</th>
-                <th style={{ padding: '10px' }}>Estado de Acceso</th>
+                <th style={{ padding: '10px' }}>Correo</th>
+                <th style={{ padding: '10px' }}>Tipo Plan</th>
+                <th style={{ padding: '10px' }}>Meses Pagados</th>
+                <th style={{ padding: '10px' }}>Cant. NFCs</th>
+                <th style={{ padding: '10px' }}>Total ($)</th>
+                <th style={{ padding: '10px' }}>Estado Acceso</th>
                 <th style={{ padding: '10px', textAlign: 'right' }}>Acción</th>
               </tr>
             </thead>
@@ -212,9 +229,6 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
                     {u.name} {u.role === 'admin' && <span className="badge badge-purple" style={{ fontSize: '0.65rem', marginLeft: '6px' }}>Admin</span>}
                   </td>
                   <td style={{ padding: '12px 10px', color: 'var(--text-muted)' }}>{u.email}</td>
-                  <td style={{ padding: '12px 10px' }}>
-                    <span className="badge badge-purple">{u.venues_count} sedes</span>
-                  </td>
                   
                   {/* Plan Type Selector */}
                   <td style={{ padding: '12px 10px' }}>
@@ -237,7 +251,46 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
                     )}
                   </td>
 
-                  {/* Amount Paid Input */}
+                  {/* Months Paid Input */}
+                  <td style={{ padding: '12px 10px' }}>
+                    {u.role === 'admin' ? (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>-</span>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Calendar size={14} color="#a855f7" />
+                        <input
+                          type="number"
+                          min="1"
+                          className="input-field"
+                          value={editingMonths[u.id] !== undefined ? editingMonths[u.id] : u.months_paid || 1}
+                          onChange={(e) => setEditingMonths({ ...editingMonths, [u.id]: e.target.value })}
+                          style={{ width: '65px', padding: '4px 6px', fontSize: '0.82rem', textAlign: 'center' }}
+                        />
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>meses</span>
+                      </div>
+                    )}
+                  </td>
+
+                  {/* NFC Count Input */}
+                  <td style={{ padding: '12px 10px' }}>
+                    {u.role === 'admin' ? (
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>-</span>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Smartphone size={14} color="#38bdf8" />
+                        <input
+                          type="number"
+                          min="1"
+                          className="input-field"
+                          value={editingNfcs[u.id] !== undefined ? editingNfcs[u.id] : u.nfc_count || 1}
+                          onChange={(e) => setEditingNfcs({ ...editingNfcs, [u.id]: e.target.value })}
+                          style={{ width: '60px', padding: '4px 6px', fontSize: '0.82rem', textAlign: 'center' }}
+                        />
+                      </div>
+                    )}
+                  </td>
+
+                  {/* Amount Paid Input & Save button */}
                   <td style={{ padding: '12px 10px' }}>
                     {u.role === 'admin' ? (
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>-</span>
@@ -249,13 +302,13 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
                           className="input-field"
                           value={editingAmount[u.id] !== undefined ? editingAmount[u.id] : u.amount_paid || 0}
                           onChange={(e) => setEditingAmount({ ...editingAmount, [u.id]: e.target.value })}
-                          style={{ width: '90px', padding: '4px 8px', fontSize: '0.82rem' }}
+                          style={{ width: '85px', padding: '4px 6px', fontSize: '0.82rem' }}
                         />
                         <button
-                          onClick={() => saveUserPlanAndAmount(u)}
+                          onClick={() => saveUserData(u)}
                           disabled={updatingId === u.id}
                           className="btn-secondary"
-                          title="Guardar Plan y Monto"
+                          title="Guardar Cambios de Licencia, Meses y NFCs"
                           style={{ padding: '4px 8px' }}
                         >
                           <Save size={14} color="#34d399" />
