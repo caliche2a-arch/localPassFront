@@ -89,22 +89,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
     return Math.round(R * c * 10) / 10;
   };
 
-  const setSimulatorPreset = (preset) => {
-    if (!venue) return;
-    if (preset === 'inside') {
-      const simLat = venue.latitude + 0.00008;
-      const simLng = venue.longitude + 0.00008;
-      setUserLocation({ lat: simLat, lng: simLng });
-      setSimulatedDistance(calculateHaversine(simLat, simLng, venue.latitude, venue.longitude));
-      setGpsError(null);
-    } else if (preset === 'far') {
-      const simLat = venue.latitude + 0.0045;
-      const simLng = venue.longitude + 0.0045;
-      setUserLocation({ lat: simLat, lng: simLng });
-      setSimulatedDistance(calculateHaversine(simLat, simLng, venue.latitude, venue.longitude));
-      setGpsError(null);
-    }
-  };
+
 
   const handleCheckInSubmit = async (e) => {
     e.preventDefault();
@@ -218,36 +203,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
         </p>
       </div>
 
-      {/* Simulator Banner for testing NFC without physical tag */}
-      <div className="glass-card" style={{ padding: '1rem', marginBottom: '1.25rem', border: '1px dashed rgba(99, 102, 241, 0.4)', background: 'rgba(99, 102, 241, 0.05)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '0.5rem' }}>
-          <Sparkles size={16} color="#a5b4fc" />
-          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#a5b4fc' }}>
-            Verificador y Test de Geolocalización GPS
-          </span>
-        </div>
-        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-          Valida la respuesta del rango de geofencia del establecimiento:
-        </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-          <button
-            type="button"
-            onClick={() => setSimulatorPreset('inside')}
-            className="btn-secondary"
-            style={{ fontSize: '0.78rem', padding: '8px 10px', borderColor: 'rgba(16, 185, 129, 0.4)' }}
-          >
-            🎯 Simular DENTRO (~10m)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSimulatorPreset('far')}
-            className="btn-secondary"
-            style={{ fontSize: '0.78rem', padding: '8px 10px', borderColor: 'rgba(239, 68, 68, 0.4)' }}
-          >
-            ⛔ Simular FUERA (~500m)
-          </button>
-        </div>
-      </div>
+
 
       {/* GPS Location Status Indicator */}
       <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem', textAlign: 'center' }}>
