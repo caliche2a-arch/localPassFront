@@ -64,6 +64,15 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
         if (venueObj) {
           const dist = calculateHaversine(coords.lat, coords.lng, venueObj.latitude, venueObj.longitude);
           setUserDistance(dist);
+
+          // AUTO CHECK-IN: If customer has already registered before (saved in localStorage) and is physically inside the venue
+          const savedPhone = localStorage.getItem('localpass_customer_phone');
+          const savedName = localStorage.getItem('localpass_customer_name');
+          const savedEmail = localStorage.getItem('localpass_customer_email') || '';
+
+          if (savedPhone && savedName && dist <= venueObj.geofence_radius) {
+            autoProcessCheckIn(savedPhone, savedName, savedEmail, coords, venueObj);
+          }
         }
       },
       (err) => {
@@ -73,6 +82,51 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
+  };
+
+  const autoProcessCheckIn = async (custPhone, custName, custEmail, coords, venueObj) => {
+    setSubmitting(true);
+    setCheckInResult(null);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/public/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug: venueObj ? venueObj.slug : venueSlug,
+          phone: custPhone,
+          name: custName,
+          email: custEmail,
+          user_lat: coords.lat,
+          user_lng: coords.lng
+        })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setCheckInResult({
+          success: true,
+          message: data.message,
+          visits_count: data.visits_count,
+          is_first_visit: data.is_first_visit,
+          venue_name: data.venue_name,
+          customer_name: data.customer_name
+        });
+
+        try {
+          confetti({
+            particleCount: 80,
+            spread: 70,
+            origin: { y: 0.6 }
+          });
+        } catch (e) {}
+      }
+    } catch (err) {
+      console.error('Error en autocheckin:', err);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const calculateHaversine = (lat1, lon1, lat2, lon2) => {
