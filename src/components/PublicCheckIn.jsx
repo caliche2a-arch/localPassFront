@@ -8,10 +8,10 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Form State
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  // Form State initialized from localStorage if available
+  const [phone, setPhone] = useState(localStorage.getItem('localpass_customer_phone') || '');
+  const [name, setName] = useState(localStorage.getItem('localpass_customer_name') || '');
+  const [email, setEmail] = useState(localStorage.getItem('localpass_customer_email') || '');
 
   // GPS State
   const [userLocation, setUserLocation] = useState(null);
@@ -89,8 +89,6 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
     return Math.round(R * c * 10) / 10;
   };
 
-
-
   const handleCheckInSubmit = async (e) => {
     e.preventDefault();
     if (!userLocation) {
@@ -126,6 +124,13 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
           maxRadius: data.max_allowed_radius
         });
       } else {
+        // Save customer details in phone browser for instant 1-tap checkin on future visits
+        try {
+          localStorage.setItem('localpass_customer_phone', phone);
+          localStorage.setItem('localpass_customer_name', name);
+          if (email) localStorage.setItem('localpass_customer_email', email);
+        } catch (e) {}
+
         setCheckInResult({
           success: true,
           message: data.message,
@@ -338,9 +343,16 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
       {/* Check-in Form */}
       {(!checkInResult || !checkInResult.success) && (
         <form onSubmit={handleCheckInSubmit} className="glass-card" style={{ padding: '1.5rem' }}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <User size={18} color="#6366f1" /> Registrar Entrada
-          </h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+            <h2 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <User size={18} color="#6366f1" /> Registrar Entrada
+            </h2>
+            {localStorage.getItem('localpass_customer_phone') && (
+              <span className="badge badge-green" style={{ fontSize: '0.68rem', padding: '3px 8px' }}>
+                ⚡ Datos Recordados
+              </span>
+            )}
+          </div>
 
           <div style={{ marginBottom: '1rem' }}>
             <label className="input-label">Número de Celular *</label>
