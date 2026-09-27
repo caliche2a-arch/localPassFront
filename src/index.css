@@ -243,3 +243,44 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* Responsive Media Queries */
+@media (max-width: 768px) {
+  header > div {
+    flex-direction: column !important;
+    gap: 12px !important;
+    align-items: stretch !important;
+  }
+  
+  header nav {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 4px;
+    justify-content: flex-start !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  header nav button {
+    flex-shrink: 0;
+  }
+
+  .header-user-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  .grid-2col, .grid-3col, .grid-4col {
+    grid-template-columns: 1fr !important;
+  }
+
+  main {
+    padding: 1rem 0.5rem !important;
+  }
+
+  .printable-card {
+    max-width: 100% !important;
+  }
+}
+
