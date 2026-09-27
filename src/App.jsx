@@ -124,62 +124,62 @@ export default function App() {
           </div>
 
           {/* Desktop Nav Items */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={() => { setActiveTab('dashboard'); window.location.hash = ''; }}
               className={activeTab === 'dashboard' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
             >
-              <LayoutDashboard size={15} /> {isSuperAdmin ? 'Panel Admin' : 'Mi Panel'}
+              <LayoutDashboard size={16} /> {isSuperAdmin ? 'Panel Admin' : 'Mi Panel'}
             </button>
 
             <button
               onClick={() => { setActiveTab('checkin'); window.location.hash = `#/checkin/${getSlugFromHash()}`; }}
               className={activeTab === 'checkin' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 14px', fontSize: '0.82rem', borderColor: activeTab === 'checkin' ? undefined : 'rgba(16, 185, 129, 0.4)' }}
+              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto', borderColor: activeTab === 'checkin' ? undefined : 'rgba(16, 185, 129, 0.4)' }}
             >
-              <UserCheck size={15} color="#34d399" /> Check-in NFC
+              <UserCheck size={16} color="#34d399" /> Check-in NFC
             </button>
 
             <button
               onClick={() => { setActiveTab('nfc-qr'); window.location.hash = ''; }}
               className={activeTab === 'nfc-qr' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
             >
-              <QrCode size={15} /> Mi QR y NFC
+              <QrCode size={16} /> Mi QR y NFC
             </button>
 
             <button
               onClick={() => { setActiveTab('settings'); window.location.hash = ''; }}
               className={activeTab === 'settings' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
             >
-              <Building size={15} /> Mi Local
+              <Building size={16} /> Mi Local
             </button>
 
             <button
               onClick={() => { setActiveTab('support'); window.location.hash = ''; }}
               className={activeTab === 'support' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 14px', fontSize: '0.82rem' }}
+              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
             >
-              <Headphones size={15} color="#10b981" /> Soporte
+              <Headphones size={16} color="#10b981" /> Soporte
             </button>
           </nav>
 
           {/* Auth Button */}
-          <div>
+          <div style={{ flexShrink: 0 }}>
             {token ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{ fontSize: '0.82rem', color: isSuperAdmin ? '#fbbf24' : 'var(--text-muted)', fontWeight: isSuperAdmin ? 700 : 400 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '0.85rem', color: isSuperAdmin ? '#fbbf24' : 'var(--text-muted)', fontWeight: isSuperAdmin ? 700 : 500, whiteSpace: 'nowrap' }}>
                   👤 {user?.name || 'Administrador'}
                 </span>
-                <button onClick={handleLogout} className="btn-secondary" style={{ padding: '7px 12px', fontSize: '0.78rem' }}>
-                  <LogOut size={13} /> Salir
+                <button onClick={handleLogout} className="btn-secondary" style={{ padding: '8px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap', width: 'auto' }}>
+                  <LogOut size={14} /> Salir
                 </button>
               </div>
             ) : (
-              <button onClick={() => setIsAuthOpen(true)} className="btn-primary" style={{ padding: '8px 18px', fontSize: '0.85rem' }}>
-                <LogIn size={15} /> Ingresar
+              <button onClick={() => setIsAuthOpen(true)} className="btn-primary" style={{ padding: '8px 20px', fontSize: '0.88rem', whiteSpace: 'nowrap', width: 'auto' }}>
+                <LogIn size={16} /> Ingresar
               </button>
             )}
           </div>
