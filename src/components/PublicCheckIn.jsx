@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, CheckCircle, AlertTriangle, Smartphone, ShieldCheck, User, Phone, Mail, Navigation, RefreshCw, Sparkles, Send } from 'lucide-react';
+import { MapPin, CheckCircle, AlertTriangle, Smartphone, ShieldCheck, User, Phone, Mail, Navigation, RefreshCw, Sparkles, Send, Award, Calendar, Heart, Gift, Star, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { API_BASE_URL } from '../config';
 
@@ -258,28 +258,63 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
 
       {/* Success Result View */}
       {checkInResult && checkInResult.success && (
-        <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', marginBottom: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.08)' }}>
+        <div className="glass-card" style={{ padding: '2rem 1.5rem', textAlign: 'center', marginBottom: '1.5rem', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.08)' }}>
           <div style={{ width: 70, height: 70, borderRadius: '50%', background: 'linear-gradient(135deg, #10b981, #059669)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem auto', boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)' }}>
             <CheckCircle size={40} color="#ffffff" />
           </div>
-          <h2 style={{ fontSize: '1.4rem', color: '#ffffff', marginBottom: '0.5rem' }}>
-            ¡Visita Registrada!
+          <h2 style={{ fontSize: '1.4rem', color: '#ffffff', marginBottom: '0.25rem' }}>
+            ¡Visita Confirmada!
           </h2>
-          <p style={{ fontSize: '0.95rem', color: '#d1fae5', marginBottom: '1rem', lineHeight: '1.5' }}>
+          <p style={{ fontSize: '0.88rem', color: '#d1fae5', marginBottom: '1.25rem', lineHeight: '1.4' }}>
             {checkInResult.message}
           </p>
 
-          <div style={{ background: 'rgba(0, 0, 0, 0.3)', borderRadius: 12, padding: '1rem', marginBottom: '1.5rem' }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>
-              NIVEL DE FIDELIDAD
-            </span>
-            <span className="gradient-text-green" style={{ fontSize: '1.5rem', fontWeight: 800 }}>
-              Visita #{checkInResult.visits_count}
-            </span>
+          {/* Customer Loyalty Stats Grid */}
+          <div style={{ background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: 16, padding: '1.25rem', marginBottom: '1.25rem', textAlign: 'left' }}>
+            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', paddingBottom: '0.75rem', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <div>
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>Cliente</span>
+                <strong style={{ fontSize: '1rem', color: '#ffffff' }}>{checkInResult.customer_name || name}</strong>
+              </div>
+              <span className="badge badge-purple" style={{ fontSize: '0.75rem', padding: '4px 10px' }}>
+                <Award size={13} /> {checkInResult.visits_count >= 10 ? 'VIP Platinum' : checkInResult.visits_count >= 5 ? 'Frecuente Gold' : 'Cliente Frecuente'}
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '1rem' }}>
+              <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#34d399', fontSize: '0.75rem', fontWeight: 600, marginBottom: '2px' }}>
+                  <Award size={14} /> Total Visitas
+                </div>
+                <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>
+                  {checkInResult.visits_count}
+                </span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>
+                  en {checkInResult.venue_name || venue?.name}
+                </span>
+              </div>
+
+              <div style={{ background: 'rgba(255, 255, 255, 0.04)', padding: '10px 12px', borderRadius: 12, border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#a5b4fc', fontSize: '0.75rem', fontWeight: 600, marginBottom: '2px' }}>
+                  <ShieldCheck size={14} /> Validación GPS
+                </div>
+                <span style={{ fontSize: '1.4rem', fontWeight: 800, color: '#ffffff' }}>
+                  {distanceMeters ? `${distanceMeters}m` : '0m'}
+                </span>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'block' }}>
+                  Presencia en sitio
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16, 185, 129, 0.1)', padding: '8px 12px', borderRadius: 10, fontSize: '0.75rem', color: '#a7f3d0' }}>
+              <Clock size={14} /> Registrado hoy a las {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
           </div>
 
           <button onClick={() => setCheckInResult(null)} className="btn-secondary" style={{ width: '100%' }}>
-            Registrar otra visita
+            Entendido
           </button>
         </div>
       )}
