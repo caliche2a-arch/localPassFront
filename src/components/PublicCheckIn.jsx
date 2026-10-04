@@ -23,6 +23,72 @@ function setCookie(name, value, days = 365) {
   } catch (e) {}
 }
 
+// ── Deterministic Device Hardware Fingerprint (Screen + GPU + WebGL + Canvas) ─
+// Does NOT depend on cookies or localStorage! Survives camera ephemeral webviews & private tabs!
+function getDeviceFingerprint() {
+  try {
+    const parts = [];
+
+    // Screen geometry
+    if (typeof window !== 'undefined' && window.screen) {
+      parts.push(`${window.screen.width}x${window.screen.height}x${window.screen.colorDepth}x${window.devicePixelRatio || 1}`);
+    }
+
+    // Timezone
+    try {
+      parts.push(Intl.DateTimeFormat().resolvedOptions().timeZone || '');
+    } catch (e) {}
+
+    // Hardware & Platform
+    if (typeof navigator !== 'undefined') {
+      parts.push(navigator.language || '');
+      parts.push(navigator.hardwareConcurrency || '');
+      parts.push(navigator.platform || '');
+    }
+
+    // WebGL Unmasked GPU Renderer
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (gl) {
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugInfo) {
+          parts.push(gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '');
+          parts.push(gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) || '');
+        }
+      }
+    } catch (e) {}
+
+    // Canvas 2D graphic rendering hash
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 160;
+      canvas.height = 40;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial';
+        ctx.fillStyle = '#6366f1';
+        ctx.fillRect(10, 5, 50, 20);
+        ctx.fillStyle = '#ec4899';
+        ctx.fillText('LocalPass.nfc', 2, 10);
+        parts.push(canvas.toDataURL());
+      }
+    } catch (e) {}
+
+    // Fast DJB2 hash
+    const str = parts.join('###');
+    let hash = 5381;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) + hash) + str.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return 'fp_' + Math.abs(hash).toString(36);
+  } catch (e) {
+    return 'fp_fallback';
+  }
+}
+
 // ── Multi-Layer Device ID (localStorage + Cookie + sessionStorage) ──────────
 function getOrCreateDeviceId() {
   let id = null;
@@ -114,6 +180,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
   const [checkInResult, setCheckInResult] = useState(null);
 
   const deviceId = useRef(getOrCreateDeviceId());
+  const fingerprint = useRef(getDeviceFingerprint());
 
   useEffect(() => {
     fetchVenueInfo();
@@ -134,11 +201,11 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
     }
   };
 
-  // Step 1: Check if this device is already registered for this venue
+  // Step 1: Check if this device is already registered (device_id OR hardware fingerprint OR phone)
   const checkDeviceAndStart = async (venueObj) => {
     try {
       const storedPhone = getStoredPhone(venueObj.slug);
-      let verifyUrl = `${API_BASE_URL}/api/public/verify-customer?slug=${encodeURIComponent(venueObj.slug)}&device_id=${encodeURIComponent(deviceId.current)}`;
+      let verifyUrl = `${API_BASE_URL}/api/public/verify-customer?slug=${encodeURIComponent(venueObj.slug)}&device_id=${encodeURIComponent(deviceId.current)}&fingerprint=${encodeURIComponent(fingerprint.current)}`;
       if (storedPhone) {
         verifyUrl += `&phone=${encodeURIComponent(storedPhone)}`;
       }
@@ -146,7 +213,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
       const data = await res.json();
 
       if (data.exists) {
-        // Returning customer → auto check-in flow
+        // Returning customer → auto check-in flow 100% zero-form
         setIsKnownDevice(true);
         setRecognizedCustomer(data);
         if (data.name) saveCustomerName(data.name);
@@ -155,7 +222,6 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
       } else {
         // New or unrecognized customer → show form
         setIsKnownDevice(false);
-        // If we already have stored phone, try to pre-verify
         if (storedPhone) {
           lookupPhone(storedPhone, venueObj);
         }
@@ -174,7 +240,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
     if (clean.length >= 7 && venueObj) {
       try {
         setIsCheckingPhone(true);
-        const res = await fetch(`${API_BASE_URL}/api/public/verify-customer?slug=${encodeURIComponent(venueObj.slug)}&phone=${encodeURIComponent(clean)}`);
+        const res = await fetch(`${API_BASE_URL}/api/public/verify-customer?slug=${encodeURIComponent(venueObj.slug)}&phone=${encodeURIComponent(clean)}&fingerprint=${encodeURIComponent(fingerprint.current)}`);
         const data = await res.json();
         if (data.exists) {
           setName(data.name || '');
@@ -237,7 +303,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
         setGpsError('Activa el GPS de tu celular para registrar tu visita automáticamente.');
         setIsGettingGps(false);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
   };
 
@@ -254,7 +320,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
       () => {
         setIsGettingGps(false);
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
     );
   };
 
@@ -273,6 +339,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
         body: JSON.stringify({
           slug: venueObj.slug,
           device_id: deviceId.current,
+          fingerprint: fingerprint.current,
           name: submitName,
           phone: submitPhone,
           email: formData.email || email || undefined,
@@ -403,7 +470,7 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
                 {submitting ? 'Registrando tu visita automáticamente...' : 'Verificando tu presencia en el local...'}
               </p>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                Tu dispositivo ha sido reconocido. Registro sin formulario ⚡
+                Dispositivo reconocido. Registro sin formulario ⚡
               </p>
             </div>
           ) : gpsError ? (
@@ -581,10 +648,6 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16,185,129,0.1)', padding: '8px 12px', borderRadius: 10, fontSize: '0.75rem', color: '#a7f3d0', marginTop: '10px' }}>
               <Clock size={14} /> Registrado hoy a las {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
-          </div>
-
-          <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, padding: '10px 14px', fontSize: '0.76rem', color: '#c7d2fe', textAlign: 'left', lineHeight: '1.4' }}>
-            💡 <strong>Próximas visitas:</strong> Escanea el QR o acerca tu celular al tag NFC usando tu navegador habitual (Safari o Chrome sin modo privado) para que tu visita sea 100% instantánea y automática.
           </div>
         </div>
       )}
