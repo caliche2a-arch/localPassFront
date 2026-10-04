@@ -16,6 +16,19 @@ function getOrCreateDeviceId() {
   return id;
 }
 
+// Retrieves the stored phone for this venue (used as fallback identifier)
+function getStoredPhone(venueSlug) {
+  try {
+    return localStorage.getItem(`localpass_phone_${venueSlug}`) || '';
+  } catch { return ''; }
+}
+
+function saveCustomerPhone(venueSlug, phone) {
+  try {
+    if (phone) localStorage.setItem(`localpass_phone_${venueSlug}`, phone);
+  } catch {}
+}
+
 export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
   const [venue, setVenue]               = useState(null);
   const [loading, setLoading]           = useState(true);
@@ -61,9 +74,12 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
   // Step 1: Check if this device is already registered for this venue
   const checkDeviceAndStart = async (venueObj) => {
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/api/public/verify-customer?slug=${encodeURIComponent(venueObj.slug)}&device_id=${encodeURIComponent(deviceId.current)}`
-      );
+      const storedPhone = getStoredPhone(venueObj.slug);
+      let verifyUrl = `${API_BASE_URL}/api/public/verify-customer?slug=${encodeURIComponent(venueObj.slug)}&device_id=${encodeURIComponent(deviceId.current)}`;
+      if (storedPhone) {
+        verifyUrl += `&phone=${encodeURIComponent(storedPhone)}`;
+      }
+      const res = await fetch(verifyUrl);
       const data = await res.json();
 
       if (data.exists) {
@@ -156,6 +172,10 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
       const data = await res.json();
 
       if (res.ok) {
+        // Guardar teléfono en localStorage para futuras verificaciones
+        if (formData.phone) {
+          saveCustomerPhone(venueObj.slug, formData.phone);
+        }
         setCheckInResult({
           success: true,
           message: data.message,
