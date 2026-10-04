@@ -1,35 +1,94 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   MapPin, CheckCircle, AlertTriangle, Smartphone, ShieldCheck,
-  Navigation, RefreshCw, Clock, Award, User, Phone, Mail, Send
+  Navigation, RefreshCw, Clock, Award, User, Phone, Mail, Send, Sparkles
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { API_BASE_URL } from '../config';
 
-// Generates or retrieves a stable unique ID for this device/browser
+// ── Cookie Helpers ──────────────────────────────────────────────────────────
+function getCookie(name) {
+  try {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  } catch (e) {}
+  return null;
+}
+
+function setCookie(name, value, days = 365) {
+  try {
+    const expires = new Date(Date.now() + days * 864e5).toUTCString();
+    document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+  } catch (e) {}
+}
+
+// ── Multi-Layer Device ID (localStorage + Cookie + sessionStorage) ──────────
 function getOrCreateDeviceId() {
-  let id = localStorage.getItem('localpass_device_id');
+  let id = null;
+  try { id = localStorage.getItem('localpass_device_id'); } catch (e) {}
+  if (!id) id = getCookie('localpass_device_id');
+  if (!id) {
+    try { id = sessionStorage.getItem('localpass_device_id'); } catch (e) {}
+  }
   if (!id) {
     id = 'dev_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
-    localStorage.setItem('localpass_device_id', id);
   }
+  // Persist everywhere
+  try { localStorage.setItem('localpass_device_id', id); } catch (e) {}
+  try { sessionStorage.setItem('localpass_device_id', id); } catch (e) {}
+  setCookie('localpass_device_id', id);
   return id;
 }
 
-// Retrieves the stored phone for this venue (used as fallback identifier)
+// ── Multi-Layer Phone (venue-scoped + global fallbacks) ──────────────────────
 function getStoredPhone(venueSlug) {
+  let phone = '';
   try {
-    return localStorage.getItem(`localpass_phone_${venueSlug}`) || '';
-  } catch { return ''; }
+    phone = localStorage.getItem(`localpass_phone_${venueSlug}`) ||
+            localStorage.getItem('localpass_phone') || '';
+  } catch (e) {}
+  if (!phone) {
+    phone = getCookie(`localpass_phone_${venueSlug}`) || getCookie('localpass_phone') || '';
+  }
+  if (!phone) {
+    try {
+      phone = sessionStorage.getItem(`localpass_phone_${venueSlug}`) ||
+              sessionStorage.getItem('localpass_phone') || '';
+    } catch (e) {}
+  }
+  return phone;
 }
 
 function saveCustomerPhone(venueSlug, phone) {
+  if (!phone) return;
   try {
-    if (phone) localStorage.setItem(`localpass_phone_${venueSlug}`, phone);
-  } catch {}
+    localStorage.setItem(`localpass_phone_${venueSlug}`, phone);
+    localStorage.setItem('localpass_phone', phone);
+  } catch (e) {}
+  try {
+    sessionStorage.setItem(`localpass_phone_${venueSlug}`, phone);
+    sessionStorage.setItem('localpass_phone', phone);
+  } catch (e) {}
+  setCookie(`localpass_phone_${venueSlug}`, phone);
+  setCookie('localpass_phone', phone);
+}
+
+function getStoredName() {
+  try {
+    return localStorage.getItem('localpass_customer_name') || getCookie('localpass_customer_name') || '';
+  } catch (e) { return ''; }
+}
+
+function saveCustomerName(name) {
+  if (!name) return;
+  try { localStorage.setItem('localpass_customer_name', name); } catch (e) {}
+  setCookie('localpass_customer_name', name);
 }
 
 export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
+  const cleanSlug = String(venueSlug).split('?')[0].replace(/\/+$/, '').trim();
+
   const [venue, setVenue]               = useState(null);
   const [loading, setLoading]           = useState(true);
   const [error, setError]               = useState(null);
@@ -39,13 +98,17 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
   const [gpsError, setGpsError]         = useState(null);
   const [userLocation, setUserLocation] = useState(null);
 
-  // Whether this device has already registered before
-  const [isKnownDevice, setIsKnownDevice] = useState(null); // null = checking, true/false
+  // Identity state
+  const [isKnownDevice, setIsKnownDevice]         = useState(null); // null = checking, true/false
+  const [recognizedCustomer, setRecognizedCustomer] = useState(null);
 
-  // First-time registration form
-  const [phone, setPhone] = useState('');
-  const [name, setName]   = useState('');
+  // First-time or fallback registration form
+  const [phone, setPhone] = useState(getStoredPhone(cleanSlug));
+  const [name, setName]   = useState(getStoredName());
   const [email, setEmail] = useState('');
+  const [isCheckingPhone, setIsCheckingPhone]     = useState(false);
+  const [isReturningIdentified, setIsReturningIdentified] = useState(false);
+  const [returningInfo, setReturningInfo]         = useState(null);
 
   const [submitting, setSubmitting]       = useState(false);
   const [checkInResult, setCheckInResult] = useState(null);
@@ -54,12 +117,12 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
 
   useEffect(() => {
     fetchVenueInfo();
-  }, [venueSlug]);
+  }, [cleanSlug]);
 
   const fetchVenueInfo = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE_URL}/api/public/venue/${venueSlug}`);
+      const res = await fetch(`${API_BASE_URL}/api/public/venue/${cleanSlug}`);
       if (!res.ok) throw new Error('No se pudo encontrar la información del local');
       const data = await res.json();
       setVenue(data);
@@ -85,17 +148,63 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
       if (data.exists) {
         // Returning customer → auto check-in flow
         setIsKnownDevice(true);
+        setRecognizedCustomer(data);
+        if (data.name) saveCustomerName(data.name);
+        if (data.phone) saveCustomerPhone(venueObj.slug, data.phone);
         startGpsAndCheckin(venueObj);
       } else {
-        // New customer → show form first
+        // New or unrecognized customer → show form
         setIsKnownDevice(false);
-        // Still get GPS in the background so it's ready when they submit
+        // If we already have stored phone, try to pre-verify
+        if (storedPhone) {
+          lookupPhone(storedPhone, venueObj);
+        }
         startGpsOnly();
       }
     } catch (e) {
-      // If verify fails, assume new customer and show form
+      // If verify fails, show form
       setIsKnownDevice(false);
       startGpsOnly();
+    }
+  };
+
+  // Lookup phone dynamically when typed in form
+  const lookupPhone = async (phoneVal, venueObj = venue) => {
+    const clean = String(phoneVal).replace(/[^0-9]/g, '');
+    if (clean.length >= 7 && venueObj) {
+      try {
+        setIsCheckingPhone(true);
+        const res = await fetch(`${API_BASE_URL}/api/public/verify-customer?slug=${encodeURIComponent(venueObj.slug)}&phone=${encodeURIComponent(clean)}`);
+        const data = await res.json();
+        if (data.exists) {
+          setName(data.name || '');
+          setIsReturningIdentified(true);
+          setReturningInfo(data);
+          saveCustomerPhone(venueObj.slug, clean);
+          if (data.name) saveCustomerName(data.name);
+        } else {
+          setIsReturningIdentified(false);
+          setReturningInfo(null);
+        }
+      } catch (e) {
+      } finally {
+        setIsCheckingPhone(false);
+      }
+    } else if (clean.length < 7) {
+      setIsReturningIdentified(false);
+      setReturningInfo(null);
+    }
+  };
+
+  const handlePhoneInputChange = (e) => {
+    const val = e.target.value;
+    setPhone(val);
+    const clean = val.replace(/[^0-9]/g, '');
+    if (clean.length >= 10) {
+      lookupPhone(clean, venue);
+    } else if (clean.length < 7) {
+      setIsReturningIdentified(false);
+      setReturningInfo(null);
     }
   };
 
@@ -154,6 +263,9 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
     setSubmitting(true);
     setCheckInResult(null);
 
+    const submitPhone = formData.phone || phone || getStoredPhone(venueObj.slug) || undefined;
+    const submitName  = formData.name || name || getStoredName() || undefined;
+
     try {
       const res = await fetch(`${API_BASE_URL}/api/public/checkin`, {
         method: 'POST',
@@ -161,9 +273,9 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
         body: JSON.stringify({
           slug: venueObj.slug,
           device_id: deviceId.current,
-          name: formData.name || undefined,
-          phone: formData.phone || undefined,
-          email: formData.email || undefined,
+          name: submitName,
+          phone: submitPhone,
+          email: formData.email || email || undefined,
           user_lat: coords.lat,
           user_lng: coords.lng
         })
@@ -172,10 +284,10 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
       const data = await res.json();
 
       if (res.ok) {
-        // Guardar teléfono en localStorage para futuras verificaciones
-        if (formData.phone) {
-          saveCustomerPhone(venueObj.slug, formData.phone);
-        }
+        // Guardar teléfono y nombre en múltiples capas para que nunca se pierda
+        if (submitPhone) saveCustomerPhone(venueObj.slug, submitPhone);
+        if (submitName) saveCustomerName(submitName);
+
         setCheckInResult({
           success: true,
           message: data.message,
@@ -203,8 +315,8 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
     }
   };
 
-  // Form submit for FIRST-TIME customers
-  const handleFirstTimeSubmit = async (e) => {
+  // Form submit for FIRST-TIME or IDENTIFIED returning customers
+  const handleFormSubmit = async (e) => {
     e.preventDefault();
     if (!userLocation) {
       alert('Espera un momento mientras se verifica tu ubicación GPS.');
@@ -273,16 +385,25 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{venue.address}</p>
       </div>
 
-      {/* ── RETURNING CUSTOMER: GPS status + auto check-in ────────── */}
+      {/* ── RETURNING CUSTOMER: Auto check-in mode ─────────────────── */}
       {isKnownDevice === true && !checkInResult && (
-        <div className="glass-card" style={{ padding: '1.25rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+        <div className="glass-card" style={{ padding: '1.5rem 1.25rem', marginBottom: '1.5rem', textAlign: 'center' }}>
+          {recognizedCustomer?.name && (
+            <div style={{ marginBottom: '1rem', display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 20, padding: '6px 14px', fontSize: '0.85rem', color: '#a5b4fc' }}>
+              <Sparkles size={14} color="#818cf8" /> ¡Hola, {recognizedCustomer.name}!
+            </div>
+          )}
+
           {isGettingGps || submitting ? (
             <div>
               <div className="radar-circle scanning" style={{ width: 64, height: 64 }}>
                 {submitting ? <CheckCircle size={28} color="#6366f1" /> : <Navigation size={24} color="#6366f1" />}
               </div>
-              <p style={{ fontSize: '0.9rem', color: '#a5b4fc', marginTop: '0.5rem' }}>
-                {submitting ? 'Registrando tu visita automáticamente...' : 'Verificando tu ubicación GPS...'}
+              <p style={{ fontSize: '0.95rem', fontWeight: 600, color: '#e0e7ff', marginTop: '0.75rem' }}>
+                {submitting ? 'Registrando tu visita automáticamente...' : 'Verificando tu presencia en el local...'}
+              </p>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                Tu dispositivo ha sido reconocido. Registro sin formulario ⚡
               </p>
             </div>
           ) : gpsError ? (
@@ -312,19 +433,35 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
         </div>
       )}
 
-      {/* ── NEW CUSTOMER: Registration form (first time only) ──────── */}
+      {/* ── NEW OR RECONNECTING CUSTOMER FORM ─────────────────────── */}
       {isKnownDevice === false && !checkInResult && (
-        <form onSubmit={handleFirstTimeSubmit} className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+        <form onSubmit={handleFormSubmit} className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
           <div style={{ marginBottom: '1.25rem' }}>
             <h2 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <User size={18} color="#6366f1" /> Bienvenido(a) — Primer Registro
+              <User size={18} color="#6366f1" />
+              {isReturningIdentified ? '¡Te hemos reconocido!' : 'Registro de Visita'}
             </h2>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>
-              Solo lo harás <strong>una vez</strong>. Las próximas visitas serán completamente automáticas. ⚡
+              {isReturningIdentified
+                ? `Bienvenido(a) de nuevo, ${returningInfo?.name || 'amigo(a)'}. Presiona el botón para confirmar tu visita.`
+                : 'Ingresa tus datos una sola vez. Las próximas visitas serán automáticas.'}
             </p>
           </div>
 
-          {/* GPS indicator while filling form */}
+          {/* Banner if customer was recognized by phone */}
+          {isReturningIdentified && (
+            <div style={{ background: 'rgba(16,185,129,0.12)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 12, padding: '10px 14px', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <CheckCircle size={20} color="#34d399" />
+              <div style={{ fontSize: '0.82rem', color: '#d1fae5' }}>
+                <strong>Cliente Reconocido:</strong> {returningInfo?.name}
+                <div style={{ fontSize: '0.72rem', color: '#a7f3d0' }}>
+                  Has realizado {returningInfo?.visits_count || 1} visita(s) anteriores.
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* GPS status while filling */}
           {isGettingGps && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 10, padding: '8px 12px', marginBottom: '1rem', fontSize: '0.78rem', color: '#a5b4fc' }}>
               <Navigation size={14} /> Obteniendo tu ubicación GPS en segundo plano...
@@ -335,6 +472,29 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
               <ShieldCheck size={14} /> Ubicación validada — estás en el local ✓
             </div>
           )}
+
+          {/* Phone Field First (Key Identifier) */}
+          <div style={{ marginBottom: '1rem' }}>
+            <label className="input-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Número de Celular *</span>
+              {isCheckingPhone && <span style={{ fontSize: '0.72rem', color: '#818cf8' }}>Buscando...</span>}
+            </label>
+            <div style={{ position: 'relative' }}>
+              <input
+                type="tel"
+                required
+                placeholder="Ej: 3001234567"
+                className="input-field"
+                value={phone}
+                onChange={handlePhoneInputChange}
+                onBlur={() => lookupPhone(phone, venue)}
+              />
+              <Phone size={16} color="#9ca3af" style={{ position: 'absolute', right: 14, top: 14 }} />
+            </div>
+            <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+              Si ya te has registrado antes, escribe tu número para reconocerte de inmediato.
+            </p>
+          </div>
 
           <div style={{ marginBottom: '1rem' }}>
             <label className="input-label">Nombre Completo *</label>
@@ -351,49 +511,38 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
             </div>
           </div>
 
-          <div style={{ marginBottom: '1rem' }}>
-            <label className="input-label">Número de Celular *</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="tel"
-                required
-                placeholder="Ej: 3001234567"
-                className="input-field"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-              <Phone size={16} color="#9ca3af" style={{ position: 'absolute', right: 14, top: 14 }} />
+          {!isReturningIdentified && (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label className="input-label">Correo Electrónico (Opcional)</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="email"
+                  placeholder="Ej: maria@ejemplo.com"
+                  className="input-field"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <Mail size={16} color="#9ca3af" style={{ position: 'absolute', right: 14, top: 14 }} />
+              </div>
             </div>
-          </div>
-
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label className="input-label">Correo Electrónico (Opcional)</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="email"
-                placeholder="Ej: maria@ejemplo.com"
-                className="input-field"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-              <Mail size={16} color="#9ca3af" style={{ position: 'absolute', right: 14, top: 14 }} />
-            </div>
-          </div>
+          )}
 
           <button
             type="submit"
             disabled={submitting || (!userLocation && !isGettingGps)}
             className="btn-primary"
-            style={{ width: '100%' }}
+            style={{ width: '100%', marginTop: '0.5rem' }}
           >
             {submitting ? (
-              'Registrando...'
+              'Confirmando visita...'
             ) : isGettingGps ? (
               <><Navigation size={16} /> Esperando GPS...</>
             ) : !userLocation ? (
               '⛔ GPS no disponible — activa la ubicación'
             ) : !isWithinRadius ? (
               `⛔ Fuera de rango (${distanceMeters}m del local)`
+            ) : isReturningIdentified ? (
+              <><Sparkles size={18} /> Confirmar Visita de {name.split(' ')[0]} ✓</>
             ) : (
               <><Send size={18} /> Registrarme y Confirmar Visita</>
             )}
@@ -432,6 +581,10 @@ export function PublicCheckIn({ venueSlug = 'cafe-gourmet-central' }) {
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(16,185,129,0.1)', padding: '8px 12px', borderRadius: 10, fontSize: '0.75rem', color: '#a7f3d0', marginTop: '10px' }}>
               <Clock size={14} /> Registrado hoy a las {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </div>
+          </div>
+
+          <div style={{ background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 12, padding: '10px 14px', fontSize: '0.76rem', color: '#c7d2fe', textAlign: 'left', lineHeight: '1.4' }}>
+            💡 <strong>Próximas visitas:</strong> Escanea el QR o acerca tu celular al tag NFC usando tu navegador habitual (Safari o Chrome sin modo privado) para que tu visita sea 100% instantánea y automática.
           </div>
         </div>
       )}
