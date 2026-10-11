@@ -223,6 +223,8 @@ export default function App() {
         {activeTab === 'nfc-qr' && (
           <NfcQrGenerator
             venue={currentVenue || { name: 'Café Gourmet Central', slug: 'cafe-gourmet-central', geofence_radius: 75 }}
+            venues={venues}
+            onSelectVenue={(v) => setCurrentVenue(v)}
             user={user}
             onOpenCheckinView={() => { setActiveTab('checkin'); window.location.hash = `#/checkin/${getSlugFromHash()}`; }}
           />

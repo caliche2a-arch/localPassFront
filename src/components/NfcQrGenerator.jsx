@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Smartphone, QrCode, Copy, ExternalLink, Printer, Check, ShieldCheck, Phone, Wrench, Crown } from 'lucide-react';
 
-export function NfcQrGenerator({ venue, user, onOpenCheckinView }) {
+export function NfcQrGenerator({ venue, venues = [], onSelectVenue, user, onOpenCheckinView }) {
   const [copied, setCopied] = useState(false);
 
   // Check if current logged in user is Carlos / Super Admin
@@ -33,6 +33,41 @@ export function NfcQrGenerator({ venue, user, onOpenCheckinView }) {
     <div style={{ maxWidth: '900px', margin: '0 auto', padding: '1rem' }}>
       
       <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', marginBottom: '1.5rem' }}>
+        
+        {/* Venue Selector in QR View if user has multiple venues */}
+        {venues && venues.length > 1 && (
+          <div style={{ maxWidth: '400px', margin: '0 auto 1.5rem auto', textAlign: 'left' }}>
+            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700 }}>
+              🏢 SELECCIONA EL LOCAL PARA GENERAR SU QR/NFC:
+            </label>
+            <select
+              value={venue.id}
+              onChange={(e) => {
+                const selected = venues.find(v => v.id === Number(e.target.value));
+                if (selected && onSelectVenue) onSelectVenue(selected);
+              }}
+              className="input-field"
+              style={{
+                padding: '10px 14px',
+                fontSize: '1.05rem',
+                fontWeight: 800,
+                width: '100%',
+                background: 'rgba(15, 23, 42, 0.95)',
+                border: '2px solid rgba(99, 102, 241, 0.5)',
+                borderRadius: '12px',
+                color: '#ffffff',
+                cursor: 'pointer'
+              }}
+            >
+              {venues.map((v) => (
+                <option key={v.id} value={v.id} style={{ background: '#0f172a', color: '#fff' }}>
+                  🏢 {v.name} ({v.address})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div style={{ display: 'inline-flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
           <span className="badge badge-purple"><Smartphone size={14} /> Tarjetas & NFC Mesas</span>
           <span className="badge badge-green"><ShieldCheck size={14} /> Geocerca de {venue.geofence_radius}m</span>
@@ -45,7 +80,7 @@ export function NfcQrGenerator({ venue, user, onOpenCheckinView }) {
           Código QR y Enlace para Mesas
         </h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '600px', margin: '0.5rem auto 1.5rem auto' }}>
-          Imprime este código QR para colocar en las mesas de <strong>{venue.name}</strong>.
+          Imprime este código QR para colocar en las mesas de <strong>{venue.name}</strong>. Cada visita registrada se contará exclusivamente para este local.
         </p>
 
         {/* Printable Card Area */}
