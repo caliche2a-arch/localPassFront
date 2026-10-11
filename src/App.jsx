@@ -200,6 +200,8 @@ export default function App() {
             <Dashboard
               token={token}
               venueId={currentVenue?.id}
+              venues={venues}
+              onSelectVenue={(v) => setCurrentVenue(v)}
               onNavigateToNfc={() => setActiveTab('nfc-qr')}
               onOpenAuth={() => setIsAuthOpen(true)}
             />

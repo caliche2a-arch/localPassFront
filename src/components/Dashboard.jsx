@@ -114,7 +114,7 @@ function WhatsAppModal({ customer, venueName, onClose }) {
   );
 }
 
-export function Dashboard({ token, venueId, onNavigateToNfc, onOpenAuth }) {
+export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNavigateToNfc, onOpenAuth }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -210,20 +210,59 @@ export function Dashboard({ token, venueId, onNavigateToNfc, onOpenAuth }) {
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '1rem' }}>
 
-      {/* Top Banner */}
-      <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      {/* Top Banner with Venue Selector */}
+      <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1.25rem' }}>
+        <div style={{ flex: '1 1 300px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
             <span className="badge badge-green"><ShieldCheck size={12} /> Geocerca Activa ({venue.geofence_radius}m)</span>
             <span className="badge badge-purple"><MapPin size={12} /> {venue.slug}</span>
+            {venues.length > 1 && (
+              <span className="badge badge-amber" style={{ fontSize: '0.72rem' }}>
+                🏢 {venues.length} locales registrados
+              </span>
+            )}
           </div>
-          <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '0.25rem' }} className="gradient-text">
-            {venue.name}
-          </h1>
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{venue.address}</p>
+
+          {venues && venues.length > 1 ? (
+            <div style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', fontWeight: 600 }}>
+                📍 SELECCIONAR LOCAL ACTIVO:
+              </label>
+              <select
+                value={venue.id}
+                onChange={(e) => {
+                  const selected = venues.find(v => v.id === Number(e.target.value));
+                  if (selected && onSelectVenue) onSelectVenue(selected);
+                }}
+                className="input-field"
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '1.05rem',
+                  fontWeight: 800,
+                  maxWidth: '380px',
+                  background: 'rgba(30, 41, 59, 0.85)',
+                  border: '1px solid rgba(99, 102, 241, 0.4)',
+                  color: '#f8fafc',
+                  cursor: 'pointer'
+                }}
+              >
+                {venues.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    🏢 {v.name} ({v.address})
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '0.25rem' }} className="gradient-text">
+              {venue.name}
+            </h1>
+          )}
+
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>{venue.address}</p>
         </div>
 
-        <button onClick={onNavigateToNfc} className="btn-primary" style={{ width: 'auto', padding: '10px 20px' }}>
+        <button onClick={onNavigateToNfc} className="btn-primary" style={{ width: 'auto', padding: '10px 20px', whiteSpace: 'nowrap' }}>
           <ExternalLink size={16} /> Ver mi NFC & Código QR
         </button>
       </div>
