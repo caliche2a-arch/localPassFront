@@ -123,14 +123,22 @@ export default function App() {
             </div>
           </div>
 
-          {/* Desktop Nav Items */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {isSuperAdmin && (
+              <button
+                onClick={() => { setActiveTab('superadmin'); window.location.hash = ''; }}
+                className={activeTab === 'superadmin' ? 'btn-primary' : 'btn-secondary'}
+                style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+              >
+                <Crown size={16} color="#fbbf24" /> Gestión Clientes (Admin)
+              </button>
+            )}
+
             <button
               onClick={() => { setActiveTab('dashboard'); window.location.hash = ''; }}
               className={activeTab === 'dashboard' ? 'btn-primary' : 'btn-secondary'}
               style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
             >
-              <LayoutDashboard size={16} /> {isSuperAdmin ? 'Panel Admin' : 'Mi Panel'}
+              <LayoutDashboard size={16} /> Dashboard de Visitas
             </button>
 
             <button
@@ -190,22 +198,22 @@ export default function App() {
       {/* Main Content Area */}
       <main style={{ flex: 1, padding: '1.5rem 1rem' }}>
 
+        {activeTab === 'superadmin' && isSuperAdmin && (
+          <SuperAdminDashboard
+            token={token}
+            onSelectVenueForNfc={() => setActiveTab('nfc-qr')}
+          />
+        )}
+
         {activeTab === 'dashboard' && (
-          isSuperAdmin ? (
-            <SuperAdminDashboard
-              token={token}
-              onSelectVenueForNfc={() => setActiveTab('nfc-qr')}
-            />
-          ) : (
-            <Dashboard
-              token={token}
-              venueId={currentVenue?.id}
-              venues={venues}
-              onSelectVenue={(v) => setCurrentVenue(v)}
-              onNavigateToNfc={() => setActiveTab('nfc-qr')}
-              onOpenAuth={() => setIsAuthOpen(true)}
-            />
-          )
+          <Dashboard
+            token={token}
+            venueId={currentVenue?.id}
+            venues={venues}
+            onSelectVenue={(v) => setCurrentVenue(v)}
+            onNavigateToNfc={() => setActiveTab('nfc-qr')}
+            onOpenAuth={() => setIsAuthOpen(true)}
+          />
         )}
 
         {activeTab === 'checkin' && (

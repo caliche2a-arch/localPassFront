@@ -223,41 +223,44 @@ export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNaviga
             )}
           </div>
 
-          {venues && venues.length > 1 ? (
-            <div style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>
-              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px', fontWeight: 600 }}>
-                📍 SELECCIONAR LOCAL ACTIVO:
-              </label>
-              <select
-                value={venue.id}
-                onChange={(e) => {
-                  const selected = venues.find(v => v.id === Number(e.target.value));
-                  if (selected && onSelectVenue) onSelectVenue(selected);
-                }}
-                className="input-field"
-                style={{
-                  padding: '8px 12px',
-                  fontSize: '1.05rem',
-                  fontWeight: 800,
-                  maxWidth: '380px',
-                  background: 'rgba(30, 41, 59, 0.85)',
-                  border: '1px solid rgba(99, 102, 241, 0.4)',
-                  color: '#f8fafc',
-                  cursor: 'pointer'
-                }}
-              >
-                {venues.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    🏢 {v.name} ({v.address})
+          <div style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>
+              📍 LOCAL SELECCIONADO (FILTRAR ESTADÍSTICAS):
+            </label>
+            <select
+              value={venue.id}
+              onChange={(e) => {
+                const selected = venues.find(v => v.id === Number(e.target.value));
+                if (selected && onSelectVenue) onSelectVenue(selected);
+              }}
+              className="input-field"
+              style={{
+                padding: '10px 14px',
+                fontSize: '1.1rem',
+                fontWeight: 800,
+                width: '100%',
+                maxWidth: '450px',
+                background: 'rgba(15, 23, 42, 0.95)',
+                border: '2px solid rgba(99, 102, 241, 0.6)',
+                borderRadius: '12px',
+                color: '#ffffff',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.2)'
+              }}
+            >
+              {venues && venues.length > 0 ? (
+                venues.map((v) => (
+                  <option key={v.id} value={v.id} style={{ background: '#0f172a', color: '#fff' }}>
+                    🏢 {v.name} — {v.address}
                   </option>
-                ))}
-              </select>
-            </div>
-          ) : (
-            <h1 style={{ fontSize: '1.8rem', fontWeight: 800, marginTop: '0.25rem' }} className="gradient-text">
-              {venue.name}
-            </h1>
-          )}
+                ))
+              ) : (
+                <option value={venue.id} style={{ background: '#0f172a', color: '#fff' }}>
+                  🏢 {venue.name} — {venue.address}
+                </option>
+              )}
+            </select>
+          </div>
 
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>{venue.address}</p>
         </div>
