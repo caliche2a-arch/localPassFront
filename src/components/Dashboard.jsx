@@ -314,30 +314,6 @@ export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNaviga
           </div>
         </div>
 
-        {/* Quick Venue Tabs if user has multiple venues */}
-        {venues && venues.length > 1 && (
-          <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Cambio rápido:</span>
-            {venues.map((v) => (
-              <button
-                key={v.id}
-                onClick={() => onSelectVenue && onSelectVenue(v)}
-                className={v.id === venue.id ? 'btn-primary' : 'btn-secondary'}
-                style={{
-                  padding: '4px 10px',
-                  fontSize: '0.78rem',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
-              >
-                🏢 {v.name}
-              </button>
-            ))}
-          </div>
-        )}
-
       </div>
 
       {/* Metrics Grid */}
