@@ -255,13 +255,21 @@ h1, h2, h3, h4, h5, h6 {
   header nav {
     overflow-x: auto;
     white-space: nowrap;
-    padding-bottom: 4px;
+    padding-bottom: 6px;
     justify-content: flex-start !important;
+    gap: 6px !important;
     -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+  }
+
+  header nav::-webkit-scrollbar {
+    display: none; /* Safari and Chrome */
   }
 
   header nav button {
     flex-shrink: 0;
+    padding: 7px 12px !important;
+    font-size: 0.8rem !important;
   }
 
   .header-user-section {
@@ -269,6 +277,8 @@ h1, h2, h3, h4, h5, h6 {
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .grid-2col, .grid-3col, .grid-4col {
@@ -276,11 +286,43 @@ h1, h2, h3, h4, h5, h6 {
   }
 
   main {
-    padding: 1rem 0.5rem !important;
+    padding: 0.75rem 0.5rem !important;
+  }
+
+  .glass-card {
+    padding: 1.25rem 1rem !important;
+    border-radius: 14px !important;
   }
 
   .printable-card {
     max-width: 100% !important;
+    padding: 1.5rem 1rem !important;
+  }
+
+  /* Inputs and buttons on mobile */
+  .input-field {
+    font-size: 16px !important; /* Prevents auto-zoom on iOS Safari */
+    padding: 11px 13px !important;
+  }
+
+  /* Tables horizontal scroll container */
+  table {
+    min-width: 550px;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.4rem !important;
+  }
+
+  h2 {
+    font-size: 1.2rem !important;
+  }
+
+  .badge {
+    font-size: 0.68rem !important;
+    padding: 3px 8px !important;
   }
 }
 

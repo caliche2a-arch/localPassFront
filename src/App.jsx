@@ -196,9 +196,9 @@ export default function App() {
           </nav>
 
           {/* Auth Button */}
-          <div style={{ flexShrink: 0 }}>
+          <div className="header-user-section" style={{ flexShrink: 0 }}>
             {token ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: 'space-between', width: '100%' }}>
                 <span style={{ fontSize: '0.85rem', color: isSuperAdmin ? '#fbbf24' : 'var(--text-muted)', fontWeight: isSuperAdmin ? 700 : 500, whiteSpace: 'nowrap' }}>
                   👤 {user?.name || 'Administrador'}
                 </span>
