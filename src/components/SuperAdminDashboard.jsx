@@ -214,6 +214,7 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
               <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', textAlign: 'left', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '10px' }}>Cliente / Negocio</th>
                 <th style={{ padding: '10px' }}>Correo</th>
+                <th style={{ padding: '10px' }}>Locales Asociados</th>
                 <th style={{ padding: '10px' }}>Tipo Plan</th>
                 <th style={{ padding: '10px' }}>Meses Pagados</th>
                 <th style={{ padding: '10px' }}>Cant. NFCs</th>
@@ -229,6 +230,21 @@ export function SuperAdminDashboard({ token, onSelectVenueForNfc }) {
                     {u.name} {u.role === 'admin' && <span className="badge badge-purple" style={{ fontSize: '0.65rem', marginLeft: '6px' }}>Admin</span>}
                   </td>
                   <td style={{ padding: '12px 10px', color: 'var(--text-muted)' }}>{u.email}</td>
+                  
+                  {/* Locales Asociados */}
+                  <td style={{ padding: '12px 10px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                      <span className="badge badge-purple" style={{ width: 'fit-content', fontSize: '0.74rem', fontWeight: 700 }}>
+                        <Building size={11} style={{ marginRight: '4px' }} />
+                        {u.venues_count} {u.venues_count === 1 ? 'local' : 'locales'}
+                      </span>
+                      {u.venues && u.venues.length > 0 && (
+                        <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {u.venues.map(v => v.name).join(', ')}
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   
                   {/* Plan Type Selector */}
                   <td style={{ padding: '12px 10px' }}>

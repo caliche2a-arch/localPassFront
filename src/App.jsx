@@ -10,15 +10,14 @@ import { AuthModal } from './components/AuthModal';
 import { API_BASE_URL } from './config';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [token, setToken] = useState(localStorage.getItem('localpass_token') || null);
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('localpass_user') || 'null'));
+  const isSuperAdmin = user && (user.email === 'admin@localpass.com' || user.role === 'admin' || user.role === 'superadmin');
+  const [activeTab, setActiveTab] = useState(isSuperAdmin ? 'superadmin' : 'dashboard');
+  const [token, setToken] = useState(localStorage.getItem('localpass_token') || null);
   const [venues, setVenues] = useState([]);
   const [currentVenue, setCurrentVenue] = useState(null);
   const [creatingNewVenue, setCreatingNewVenue] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
-
-  const isSuperAdmin = user && (user.email === 'admin@localpass.com' || user.role === 'admin' || user.role === 'superadmin');
 
   // Check URL Hash for direct route like /#/checkin/cafe-gourmet-central
   useEffect(() => {
@@ -70,6 +69,11 @@ export default function App() {
     setCurrentVenue(null);
     localStorage.setItem('localpass_token', newToken);
     localStorage.setItem('localpass_user', JSON.stringify(newUser));
+    if (newUser && (newUser.email === 'admin@localpass.com' || newUser.role === 'admin' || newUser.role === 'superadmin')) {
+      setActiveTab('superadmin');
+    } else {
+      setActiveTab('dashboard');
+    }
   };
 
   const handleLogout = () => {
@@ -99,7 +103,7 @@ export default function App() {
           
           {/* Logo & Brand */}
           <div 
-            onClick={() => { setActiveTab('dashboard'); window.location.hash = ''; }} 
+            onClick={() => { setActiveTab(isSuperAdmin ? 'superadmin' : 'dashboard'); window.location.hash = ''; }} 
             style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}
           >
             <div style={{ width: 42, height: 42, borderRadius: '14px', background: 'linear-gradient(135deg, #6366f1, #ec4899)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 18px rgba(99, 102, 241, 0.45)' }}>
@@ -112,69 +116,83 @@ export default function App() {
                 </span>
                 {isSuperAdmin ? (
                   <span className="badge badge-amber" style={{ fontSize: '0.62rem' }}>
-                    <Crown size={9} /> Admin
+                    <Crown size={9} /> SuperAdmin
                   </span>
                 ) : (
                   <span className="badge badge-green" style={{ fontSize: '0.62rem' }}>Activo</span>
                 )}
               </div>
               <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', letterSpacing: '0.02em', lineHeight: 1, display: 'block', marginTop: '2px' }}>
-                Registro de clientes para tu local
+                {isSuperAdmin ? 'Panel de Administración General' : 'Registro de clientes para tu local'}
               </span>
             </div>
           </div>
 
           {/* Desktop Nav Items */}
           <nav style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            {isSuperAdmin && (
-              <button
-                onClick={() => { setActiveTab('superadmin'); window.location.hash = ''; }}
-                className={activeTab === 'superadmin' ? 'btn-primary' : 'btn-secondary'}
-                style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto', borderColor: 'rgba(245, 158, 11, 0.4)' }}
-              >
-                <Crown size={16} color="#fbbf24" /> Gestión Clientes (Admin)
-              </button>
+            {isSuperAdmin ? (
+              // Vista Exclusiva del Administrador: Sólo Gestión Clientes y Soporte
+              <>
+                <button
+                  onClick={() => { setActiveTab('superadmin'); window.location.hash = ''; }}
+                  className={activeTab === 'superadmin' ? 'btn-primary' : 'btn-secondary'}
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto', borderColor: 'rgba(245, 158, 11, 0.4)' }}
+                >
+                  <Crown size={16} color="#fbbf24" /> Gestión de Clientes (Admin)
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('support'); window.location.hash = ''; }}
+                  className={activeTab === 'support' ? 'btn-primary' : 'btn-secondary'}
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
+                >
+                  <Headphones size={16} color="#10b981" /> Soporte
+                </button>
+              </>
+            ) : (
+              // Vista Normal para Dueños de Locales
+              <>
+                <button
+                  onClick={() => { setActiveTab('dashboard'); window.location.hash = ''; }}
+                  className={activeTab === 'dashboard' ? 'btn-primary' : 'btn-secondary'}
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
+                >
+                  <LayoutDashboard size={16} /> Dashboard de Visitas
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('checkin'); window.location.hash = `#/checkin/${getSlugFromHash()}`; }}
+                  className={activeTab === 'checkin' ? 'btn-primary' : 'btn-secondary'}
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto', borderColor: activeTab === 'checkin' ? undefined : 'rgba(16, 185, 129, 0.4)' }}
+                >
+                  <UserCheck size={16} color="#34d399" /> Check-in NFC
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('nfc-qr'); window.location.hash = ''; }}
+                  className={activeTab === 'nfc-qr' ? 'btn-primary' : 'btn-secondary'}
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
+                >
+                  <QrCode size={16} /> Mi QR y NFC
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('settings'); window.location.hash = ''; }}
+                  className={activeTab === 'settings' ? 'btn-primary' : 'btn-secondary'}
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
+                >
+                  <Building size={16} /> Mi Local
+                </button>
+
+                <button
+                  onClick={() => { setActiveTab('support'); window.location.hash = ''; }}
+                  className={activeTab === 'support' ? 'btn-primary' : 'btn-secondary'}
+                  style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
+                >
+                  <Headphones size={16} color="#10b981" /> Soporte
+                </button>
+              </>
             )}
-
-            <button
-              onClick={() => { setActiveTab('dashboard'); window.location.hash = ''; }}
-              className={activeTab === 'dashboard' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
-            >
-              <LayoutDashboard size={16} /> Dashboard de Visitas
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('checkin'); window.location.hash = `#/checkin/${getSlugFromHash()}`; }}
-              className={activeTab === 'checkin' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto', borderColor: activeTab === 'checkin' ? undefined : 'rgba(16, 185, 129, 0.4)' }}
-            >
-              <UserCheck size={16} color="#34d399" /> Check-in NFC
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('nfc-qr'); window.location.hash = ''; }}
-              className={activeTab === 'nfc-qr' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
-            >
-              <QrCode size={16} /> Mi QR y NFC
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('settings'); window.location.hash = ''; }}
-              className={activeTab === 'settings' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
-            >
-              <Building size={16} /> Mi Local
-            </button>
-
-            <button
-              onClick={() => { setActiveTab('support'); window.location.hash = ''; }}
-              className={activeTab === 'support' ? 'btn-primary' : 'btn-secondary'}
-              style={{ padding: '8px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', width: 'auto' }}
-            >
-              <Headphones size={16} color="#10b981" /> Soporte
-            </button>
           </nav>
 
           {/* Auth Button */}
