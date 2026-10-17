@@ -34,11 +34,11 @@ export function NfcQrGenerator({ venue, venues = [], onSelectVenue, user, onOpen
       
       <div className="glass-card" style={{ padding: '2rem', textAlign: 'center', marginBottom: '1.5rem' }}>
         
-        {/* Venue Selector in QR View if user has multiple venues */}
-        {venues && venues.length > 1 && (
-          <div style={{ maxWidth: '400px', margin: '0 auto 1.5rem auto', textAlign: 'left' }}>
-            <label style={{ fontSize: '0.78rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700 }}>
-              🏢 SELECCIONA EL LOCAL PARA GENERAR SU QR/NFC:
+        {/* Venue Selector in QR View */}
+        {venues && venues.length > 0 && (
+          <div style={{ maxWidth: '460px', margin: '0 auto 1.5rem auto', textAlign: 'left' }}>
+            <label style={{ fontSize: '0.8rem', color: '#e2e8f0', display: 'block', marginBottom: '6px', fontWeight: 800 }}>
+              🏢 LOCAL ACTUAL PARA EL CÓDIGO QR Y TARJETA:
             </label>
             <select
               value={venue.id}
@@ -48,12 +48,12 @@ export function NfcQrGenerator({ venue, venues = [], onSelectVenue, user, onOpen
               }}
               className="input-field"
               style={{
-                padding: '10px 14px',
+                padding: '12px 14px',
                 fontSize: '1.05rem',
                 fontWeight: 800,
                 width: '100%',
                 background: 'rgba(15, 23, 42, 0.95)',
-                border: '2px solid rgba(99, 102, 241, 0.5)',
+                border: '2px solid #6366f1',
                 borderRadius: '12px',
                 color: '#ffffff',
                 cursor: 'pointer'
@@ -61,7 +61,7 @@ export function NfcQrGenerator({ venue, venues = [], onSelectVenue, user, onOpen
             >
               {venues.map((v) => (
                 <option key={v.id} value={v.id} style={{ background: '#0f172a', color: '#fff' }}>
-                  🏢 {v.name} ({v.address})
+                  🏢 {v.name} {v.address ? `(${v.address})` : ''}
                 </option>
               ))}
             </select>

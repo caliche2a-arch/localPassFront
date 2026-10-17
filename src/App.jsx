@@ -15,6 +15,7 @@ export default function App() {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('localpass_user') || 'null'));
   const [venues, setVenues] = useState([]);
   const [currentVenue, setCurrentVenue] = useState(null);
+  const [creatingNewVenue, setCreatingNewVenue] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   const isSuperAdmin = user && (user.email === 'admin@localpass.com' || user.role === 'admin' || user.role === 'superadmin');
@@ -123,6 +124,8 @@ export default function App() {
             </div>
           </div>
 
+          {/* Desktop Nav Items */}
+          <nav style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {isSuperAdmin && (
               <button
                 onClick={() => { setActiveTab('superadmin'); window.location.hash = ''; }}
@@ -212,6 +215,10 @@ export default function App() {
             venues={venues}
             onSelectVenue={(v) => setCurrentVenue(v)}
             onNavigateToNfc={() => setActiveTab('nfc-qr')}
+            onNavigateToSettings={(asNew) => {
+              setCreatingNewVenue(!!asNew);
+              setActiveTab('settings');
+            }}
             onOpenAuth={() => setIsAuthOpen(true)}
           />
         )}
@@ -235,14 +242,25 @@ export default function App() {
             token={token}
             venue={currentVenue}
             venues={venues}
+            initialIsCreatingNew={creatingNewVenue}
             onOpenAuth={() => setIsAuthOpen(true)}
-            onSelectVenue={(v) => setCurrentVenue(v)}
-            onVenueUpdated={(v) => {
+            onSelectVenue={(v) => {
+              setCreatingNewVenue(false);
               setCurrentVenue(v);
+            }}
+            onVenueUpdated={(newVenue, isNew) => {
+              setCreatingNewVenue(false);
               if (token) {
                 fetch(`${API_BASE_URL}/api/venues`, { headers: { Authorization: `Bearer ${token}` } })
                   .then(r => r.json())
-                  .then(data => setVenues(data));
+                  .then(data => {
+                    setVenues(data);
+                    // Si es un local nuevo, seleccionarlo; si es edición, actualizar el actual
+                    const updated = data.find(v => v.id === newVenue.id) || newVenue;
+                    setCurrentVenue(updated);
+                  });
+              } else {
+                setCurrentVenue(newVenue);
               }
             }}
           />

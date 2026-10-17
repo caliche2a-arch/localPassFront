@@ -3,8 +3,8 @@ import { MapPin, Navigation, Save, ShieldCheck, Check, AlertTriangle, PlusCircle
 import { MapPicker } from './MapPicker';
 import { API_BASE_URL } from '../config';
 
-export function VenueSettings({ token, venue, venues = [], onVenueUpdated, onSelectVenue, onOpenAuth }) {
-  const [isCreatingNew, setIsCreatingNew] = useState(false);
+export function VenueSettings({ token, venue, venues = [], onVenueUpdated, onSelectVenue, onOpenAuth, initialIsCreatingNew = false }) {
+  const [isCreatingNew, setIsCreatingNew] = useState(initialIsCreatingNew);
   
   const [name, setName] = useState(venue ? venue.name : '');
   const [address, setAddress] = useState(venue ? venue.address : '');
@@ -15,6 +15,13 @@ export function VenueSettings({ token, venue, venues = [], onVenueUpdated, onSel
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
   const [gettingLocation, setGettingLocation] = useState(false);
+
+  // Sync state when initialIsCreatingNew prop changes
+  useEffect(() => {
+    if (initialIsCreatingNew) {
+      startNewVenue();
+    }
+  }, [initialIsCreatingNew]);
 
   // Sync state when selected venue changes
   useEffect(() => {
@@ -92,8 +99,9 @@ export function VenueSettings({ token, venue, venues = [], onVenueUpdated, onSel
       if (!res.ok) throw new Error(data.error || 'Error al guardar el local');
 
       setMessage({ type: 'success', text: isCreatingNew ? '¡Nuevo local registrado con éxito!' : '¡Configuración del local actualizada con éxito!' });
+      const wasCreatingNew = isCreatingNew;
       setIsCreatingNew(false);
-      if (onVenueUpdated) onVenueUpdated(data);
+      if (onVenueUpdated) onVenueUpdated(data, wasCreatingNew);
     } catch (err) {
       setMessage({ type: 'error', text: err.message });
     } finally {
@@ -126,28 +134,87 @@ export function VenueSettings({ token, venue, venues = [], onVenueUpdated, onSel
   return (
     <div style={{ maxWidth: '750px', margin: '0 auto', padding: '1rem' }}>
 
-      {/* Venues Selector Header */}
-      {venues.length > 0 && (
-        <div className="glass-card" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-          <div>
-            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Mis Locales Registrados:</span>
-            <div style={{ display: 'flex', gap: '8px', marginTop: '4px', flexWrap: 'wrap' }}>
-              {venues.map((v) => (
-                <button
-                  key={v.id}
-                  onClick={() => { setIsCreatingNew(false); onSelectVenue(v); }}
-                  className={!isCreatingNew && venue?.id === v.id ? 'btn-primary' : 'btn-secondary'}
-                  style={{ padding: '6px 12px', fontSize: '0.82rem' }}
-                >
-                  <Building size={14} /> {v.name}
-                </button>
-              ))}
-            </div>
-          </div>
+      {/* Mode Selector Tabs: Editar vs Crear Nuevo */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '1.25rem' }}>
+        <button
+          type="button"
+          onClick={() => {
+            setIsCreatingNew(false);
+            if (venue) {
+              setName(venue.name);
+              setAddress(venue.address);
+              setLatitude(venue.latitude);
+              setLongitude(venue.longitude);
+              setGeofenceRadius(venue.geofence_radius);
+            }
+          }}
+          className={!isCreatingNew ? 'btn-primary' : 'btn-secondary'}
+          style={{ flex: 1, padding: '12px 16px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+        >
+          <Building size={16} /> ✏️ Editar Local Existente
+        </button>
 
-          <button onClick={startNewVenue} className="btn-secondary" style={{ borderColor: 'rgba(16, 185, 129, 0.5)', color: '#34d399' }}>
-            <PlusCircle size={16} /> Registrar Nuevo Local
-          </button>
+        <button
+          type="button"
+          onClick={startNewVenue}
+          className={isCreatingNew ? 'btn-primary' : 'btn-secondary'}
+          style={{
+            flex: 1,
+            padding: '12px 16px',
+            fontWeight: 700,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            borderColor: isCreatingNew ? '#10b981' : 'rgba(16, 185, 129, 0.4)',
+            background: isCreatingNew ? 'linear-gradient(135deg, #10b981, #059669)' : undefined,
+            color: '#ffffff'
+          }}
+        >
+          <PlusCircle size={16} /> ➕ Registrar Nuevo Local
+        </button>
+      </div>
+
+      {/* Venues Selector Header (only visible when in Edit mode and multiple venues exist) */}
+      {!isCreatingNew && venues.length > 0 && (
+        <div className="glass-card" style={{ padding: '1rem 1.5rem', marginBottom: '1.5rem', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>
+            Selecciona qué local deseas editar:
+          </span>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {venues.map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => { setIsCreatingNew(false); onSelectVenue(v); }}
+                className={venue?.id === v.id ? 'btn-primary' : 'btn-secondary'}
+                style={{ padding: '6px 14px', fontSize: '0.85rem' }}
+              >
+                🏢 {v.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Banner de alerta de modo */}
+      {isCreatingNew && (
+        <div style={{
+          padding: '12px 16px',
+          borderRadius: '12px',
+          marginBottom: '1.25rem',
+          background: 'rgba(16, 185, 129, 0.12)',
+          border: '1px solid #10b981',
+          color: '#34d399',
+          fontSize: '0.9rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px'
+        }}>
+          <PlusCircle size={20} />
+          <div>
+            <strong>Modo: Creando un Local Nuevo.</strong> Este local tendrá su propio código QR independiente y sus propias estadísticas en el Dashboard.
+          </div>
         </div>
       )}
 

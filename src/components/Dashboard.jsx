@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Calendar, TrendingUp, Award, Search, ExternalLink, RefreshCw, ShieldCheck, MapPin, Lock, LogIn, X, MessageCircle } from 'lucide-react';
+import { Users, Calendar, TrendingUp, Award, Search, ExternalLink, RefreshCw, ShieldCheck, MapPin, Lock, LogIn, X, MessageCircle, PlusCircle, QrCode, Store } from 'lucide-react';
 import { API_BASE_URL } from '../config';
 
 // WhatsApp SVG Icon
@@ -114,7 +114,7 @@ function WhatsAppModal({ customer, venueName, onClose }) {
   );
 }
 
-export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNavigateToNfc, onOpenAuth }) {
+export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNavigateToNfc, onNavigateToSettings, onOpenAuth }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -129,7 +129,7 @@ export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNaviga
     if (token) {
       fetchStats();
     }
-  }, [token, venueId]);
+  }, [token, venueId, venues.length]);
 
   const fetchStats = async () => {
     if (!token) return;
@@ -195,6 +195,11 @@ export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNaviga
         <p style={{ color: 'var(--text-muted)', margin: '1rem 0 1.5rem' }}>
           Crea tu primer local comercial para empezar a recibir clientes mediante etiquetas NFC y geolocalización.
         </p>
+        {onNavigateToSettings && (
+          <button onClick={() => onNavigateToSettings(true)} className="btn-primary" style={{ width: 'auto', padding: '10px 24px', margin: '0 auto' }}>
+            <PlusCircle size={18} /> Crear Mi Primer Local
+          </button>
+        )}
       </div>
     );
   }
@@ -210,23 +215,29 @@ export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNaviga
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '1rem' }}>
 
-      {/* Top Banner with Venue Selector */}
-      <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1.25rem' }}>
-        <div style={{ flex: '1 1 300px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '6px' }}>
-            <span className="badge badge-green"><ShieldCheck size={12} /> Geocerca Activa ({venue.geofence_radius}m)</span>
-            <span className="badge badge-purple"><MapPin size={12} /> {venue.slug}</span>
-            {venues.length > 1 && (
-              <span className="badge badge-amber" style={{ fontSize: '0.72rem' }}>
-                🏢 {venues.length} locales registrados
+      {/* Top Banner with Venue Selector & Fast Actions */}
+      <div className="glass-card" style={{ padding: '1.5rem', marginBottom: '1.5rem' }}>
+        
+        {/* Header row: Local selector + Badges */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem', marginBottom: '1rem' }}>
+          <div style={{ flex: '1 1 320px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+              <span className="badge badge-purple" style={{ fontWeight: 700 }}>
+                <Store size={13} /> Estadísticas por Local
               </span>
-            )}
-          </div>
+              <span className="badge badge-green">
+                <ShieldCheck size={12} /> Geocerca Activa ({venue.geofence_radius}m)
+              </span>
+              <span className="badge" style={{ background: 'rgba(99, 102, 241, 0.15)', color: '#818cf8', border: '1px solid rgba(99, 102, 241, 0.3)' }}>
+                <MapPin size={12} /> {venue.slug}
+              </span>
+            </div>
 
-          <div style={{ marginTop: '0.5rem', marginBottom: '0.25rem' }}>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: 700, letterSpacing: '0.05em' }}>
-              📍 LOCAL SELECCIONADO (FILTRAR ESTADÍSTICAS):
+            <label style={{ fontSize: '0.8rem', color: '#e2e8f0', display: 'block', marginBottom: '6px', fontWeight: 800, letterSpacing: '0.04em' }}>
+              📍 SELECCIONAR LOCAL PARA VER SUS DATOS:
             </label>
+
+            {/* Venue Selector Dropdown */}
             <select
               value={venue.id}
               onChange={(e) => {
@@ -235,23 +246,22 @@ export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNaviga
               }}
               className="input-field"
               style={{
-                padding: '10px 14px',
-                fontSize: '1.1rem',
+                padding: '12px 16px',
+                fontSize: '1.05rem',
                 fontWeight: 800,
                 width: '100%',
-                maxWidth: '450px',
                 background: 'rgba(15, 23, 42, 0.95)',
-                border: '2px solid rgba(99, 102, 241, 0.6)',
+                border: '2px solid #6366f1',
                 borderRadius: '12px',
                 color: '#ffffff',
                 cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.2)'
+                boxShadow: '0 4px 15px rgba(99, 102, 241, 0.25)'
               }}
             >
               {venues && venues.length > 0 ? (
                 venues.map((v) => (
                   <option key={v.id} value={v.id} style={{ background: '#0f172a', color: '#fff' }}>
-                    🏢 {v.name} — {v.address}
+                    🏢 {v.name} {v.address ? `(${v.address})` : ''}
                   </option>
                 ))
               ) : (
@@ -260,14 +270,74 @@ export function Dashboard({ token, venueId, venues = [], onSelectVenue, onNaviga
                 </option>
               )}
             </select>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: '6px' }}>
+              Dirección: <strong style={{ color: '#cbd5e1' }}>{venue.address || 'Sin dirección registrada'}</strong>
+            </p>
           </div>
 
-          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '4px' }}>{venue.address}</p>
+          {/* Quick Actions Buttons: Add Venue & QR Code */}
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {onNavigateToSettings && (
+              <button
+                onClick={() => onNavigateToSettings(true)}
+                className="btn-secondary"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '10px 16px',
+                  borderColor: 'rgba(52, 211, 153, 0.4)',
+                  color: '#34d399',
+                  fontWeight: 700,
+                  fontSize: '0.88rem'
+                }}
+              >
+                <PlusCircle size={16} /> ➕ Agregar Otro Local
+              </button>
+            )}
+
+            <button
+              onClick={onNavigateToNfc}
+              className="btn-primary"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 18px',
+                whiteSpace: 'nowrap',
+                fontWeight: 700,
+                fontSize: '0.88rem'
+              }}
+            >
+              <QrCode size={17} /> Ver QR de "{venue.name}"
+            </button>
+          </div>
         </div>
 
-        <button onClick={onNavigateToNfc} className="btn-primary" style={{ width: 'auto', padding: '10px 20px', whiteSpace: 'nowrap' }}>
-          <ExternalLink size={16} /> Ver mi NFC & Código QR
-        </button>
+        {/* Quick Venue Tabs if user has multiple venues */}
+        {venues && venues.length > 1 && (
+          <div style={{ marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }}>Cambio rápido:</span>
+            {venues.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => onSelectVenue && onSelectVenue(v)}
+                className={v.id === venue.id ? 'btn-primary' : 'btn-secondary'}
+                style={{
+                  padding: '4px 10px',
+                  fontSize: '0.78rem',
+                  borderRadius: '8px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px'
+                }}
+              >
+                🏢 {v.name}
+              </button>
+            ))}
+          </div>
+        )}
+
       </div>
 
       {/* Metrics Grid */}
